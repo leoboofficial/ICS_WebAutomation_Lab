@@ -1,0 +1,9 @@
+AssessmentType,CriterionId,Label,Description,MaxMarks,AutoRule,DisplayOrder
+LAB,conceptImplemented,Coding Standards & Refactoring,"Google Java Style naming, indentation, formatting, and refactored Java logic",3,CODE_IMPLEMENTATION,1
+LAB,namingConventions,Static Analysis & Quality Report,"Static code analysis defect fixes and documented code-quality report",3,DOCUMENTATION,2
+LAB,documentation,Peer Review & Documentation,"Javadoc comments, peer review checklist comments, and resolutions",2,DOCUMENTATION,3
+LAB,output,Functional Test Execution,"Public and hidden test case execution passes",2,OUTPUT_TESTS,4
+ESE,algorithm,Coding Standards & Linting,"Naming conventions, indentation, formatting, and Javadoc compliance",15,DOCUMENTATION,1
+ESE,implementation,Refactoring & Static Analysis,"Defect remediation, modular Java 17 design, and code-quality report",15,CODE_IMPLEMENTATION,2
+ESE,execution,Functional Execution & Output,"Public and hidden private test case verification",10,OUTPUT_TESTS,3
+ESE,viva,Peer Review & Viva-Voce,"Peer code review checklist defense and oral examination",10,MANUAL,4

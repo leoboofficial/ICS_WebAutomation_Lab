@@ -1,0 +1,1803 @@
+// ==============================================================================
+// Google Apps Script (Code.gs) for JavaLabPro Headless REST API & Database
+// Course: Industry Coding Standard with Web Script Automation (Part 1: Java Standards, Static Analysis & Peer Review)
+// Institution: Hindustan Institute of Technology and Science (Deemed to be University)
+// ==============================================================================
+//
+// DEPLOYMENT CHECKLIST FOR GOOGLE APPS SCRIPT:
+// 1. In Google Sheets: Extensions > Apps Script.
+// 2. Paste this entire code replacing all existing code in Code.gs.
+// 3. Click "Save" (disk icon).
+// 4. Click "Deploy" > "Manage deployments".
+// 5. Click the Edit (pencil) icon next to your active Web App deployment.
+// 6. Under "Version", choose "New version" (CRITICAL: otherwise Google keeps running old code!).
+// 7. Under "Execute as", select: "Me" (your Google account).
+// 8. Under "Who has access", select: "Anyone" (allows student IDE & faculty portal to sync).
+// 9. Click "Deploy". Copy the Web App URL (ends in /exec).
+// ==============================================================================
+
+function doGet(e) {
+  try {
+    if (e && e.parameter && e.parameter.action) {
+      return handleApiGet(e);
+    }
+    return jsonResponse({
+      status: "online",
+      message: "JavaLabPro Google Apps Script Headless API is online and ready.",
+      endpoints: [
+        "?action=getActiveExercises",
+        "?action=getSubmissions",
+        "?action=getStudents",
+        "?action=getFaculty",
+        "?action=getEvaluations",
+        "?action=getLoginAudit",
+        "?action=getExamConfig",
+        "?action=getRubricTemplates",
+        "?action=saveExercise&payload=...",
+        "?action=saveExamConfig&payload=...",
+        "?action=saveRubricTemplates&payload=...",
+        "?action=addStudent&payload=...",
+        "?action=saveFaculty&payload=...",
+        "?action=saveEvaluation&payload=...",
+        "?action=submitLabRecord&payload=...",
+        "?action=coordinatorLogin&payload=...",
+        "?action=coordinatorChangePassword&payload=...",
+        "?action=coordinatorSendOtp&payload=...",
+        "?action=coordinatorVerifyOtp&payload=...",
+        "?action=coordinatorResetPassword&payload=...",
+        "?action=login&email=...&regNo=...&portalRole=...&personalEmail=...&deviceId=...",
+        "?action=seedPart1",
+        "?action=setup"
+      ]
+    });
+  } catch (err) {
+    return jsonResponse({ success: false, error: err.toString() });
+  }
+}
+
+function doPost(e) {
+  try {
+    let action = '';
+    let payload = null;
+    let email = '';
+    let regNo = '';
+    let personalEmail = '';
+    let deviceId = '';
+    let portalRole = '';
+
+    if (e && e.postData && e.postData.contents) {
+      try {
+        const parsed = JSON.parse(e.postData.contents);
+        action = parsed.action;
+        payload = parsed.payload;
+        email = parsed.email;
+        regNo = parsed.regNo;
+        personalEmail = parsed.personalEmail;
+        deviceId = parsed.deviceId;
+        portalRole = parsed.portalRole;
+      } catch (parseErr) {
+        if (e.parameter) {
+          action = e.parameter.action;
+          payload = e.parameter.payload ? JSON.parse(e.parameter.payload) : e.parameter;
+        }
+      }
+    } else if (e && e.parameter) {
+      action = e.parameter.action;
+      payload = e.parameter.payload ? JSON.parse(e.parameter.payload) : e.parameter;
+    }
+
+    if (action === 'saveExercise') {
+      return jsonResponse(saveExercise(payload));
+    }
+    if (action === 'saveExamConfig') {
+      return jsonResponse(saveExamConfig(payload));
+    }
+    if (action === 'saveRubricTemplates') {
+      return jsonResponse(saveRubricTemplates(payload));
+    }
+    if (action === 'addStudent') {
+      return jsonResponse(addStudent(payload));
+    }
+    if (action === 'saveFaculty') {
+      return jsonResponse(saveFaculty(payload));
+    }
+    if (action === 'submit') {
+      return jsonResponse(saveSubmissionAndViolations(payload));
+    }
+    if (action === 'submitLabRecord') {
+      return jsonResponse(submitLabRecord(payload));
+    }
+    if (action === 'saveEvaluation') {
+      return jsonResponse(saveEvaluation(payload));
+    }
+    if (action === 'coordinatorLogin') {
+      return jsonResponse(coordinatorLogin(payload));
+    }
+    if (action === 'coordinatorChangePassword') {
+      return jsonResponse(coordinatorChangePassword(payload));
+    }
+    if (action === 'coordinatorSendOtp') {
+      return jsonResponse(coordinatorSendOtp(payload));
+    }
+    if (action === 'coordinatorVerifyOtp') {
+      return jsonResponse(coordinatorVerifyOtp(payload));
+    }
+    if (action === 'coordinatorResetPassword') {
+      return jsonResponse(coordinatorResetPassword(payload));
+    }
+    if (action === 'seedPart1') {
+      return jsonResponse(seedPart1Experiments());
+    }
+    if (action === 'login') {
+      return jsonResponse(
+        loginUserManual(
+          email || (payload && payload.email),
+          regNo || (payload && payload.regNo),
+          personalEmail || (payload && payload.personalEmail),
+          deviceId || (payload && payload.deviceId),
+          portalRole || (payload && payload.portalRole)
+        )
+      );
+    }
+    return jsonResponse({ error: 'Unknown action: ' + action });
+  } catch (err) {
+    return jsonResponse({ success: false, error: err.toString() });
+  }
+}
+
+function handleApiGet(e) {
+  const action = e.parameter.action;
+  if (action === 'getActiveExercises') {
+    return jsonResponse(getActiveExercises());
+  }
+  if (action === 'getSubmissions') {
+    return jsonResponse(getSubmissions());
+  }
+  if (action === 'getStudents') {
+    return jsonResponse(getStudents());
+  }
+  if (action === 'getFaculty') {
+    return jsonResponse(getFaculty());
+  }
+  if (action === 'getEvaluations') {
+    return jsonResponse(getEvaluations());
+  }
+  if (action === 'getLoginAudit') {
+    return jsonResponse(getLoginAudit());
+  }
+  if (action === 'getExamConfig') {
+    return jsonResponse(getExamConfig());
+  }
+  if (action === 'getRubricTemplates') {
+    return jsonResponse(getRubricTemplates());
+  }
+  if (action === 'saveExamConfig') {
+    let payload = {};
+    if (e.parameter.payload) {
+      try { payload = JSON.parse(e.parameter.payload); } catch (pErr) { payload = e.parameter; }
+    } else {
+      payload = e.parameter;
+    }
+    return jsonResponse(saveExamConfig(payload));
+  }
+  if (action === 'saveRubricTemplates') {
+    let payload = {};
+    if (e.parameter.payload) {
+      try { payload = JSON.parse(e.parameter.payload); } catch (pErr) { payload = e.parameter; }
+    } else {
+      payload = e.parameter;
+    }
+    return jsonResponse(saveRubricTemplates(payload));
+  }
+  if (action === 'saveExercise') {
+    let payload = {};
+    if (e.parameter.payload) {
+      try { payload = JSON.parse(e.parameter.payload); } catch (pErr) { payload = e.parameter; }
+    } else {
+      payload = e.parameter;
+    }
+    return jsonResponse(saveExercise(payload));
+  }
+  if (action === 'addStudent') {
+    let payload = {};
+    if (e.parameter.payload) {
+      try { payload = JSON.parse(e.parameter.payload); } catch (pErr) { payload = e.parameter; }
+    } else {
+      payload = e.parameter;
+    }
+    return jsonResponse(addStudent(payload));
+  }
+  if (action === 'saveFaculty') {
+    let payload = {};
+    if (e.parameter.payload) {
+      try { payload = JSON.parse(e.parameter.payload); } catch (pErr) { payload = e.parameter; }
+    } else {
+      payload = e.parameter;
+    }
+    return jsonResponse(saveFaculty(payload));
+  }
+  if (action === 'submit') {
+    let payload = {};
+    if (e.parameter.payload) {
+      try { payload = JSON.parse(e.parameter.payload); } catch (pErr) { payload = e.parameter; }
+    } else {
+      payload = e.parameter;
+    }
+    return jsonResponse(saveSubmissionAndViolations(payload));
+  }
+  if (action === 'submitLabRecord') {
+    let payload = {};
+    if (e.parameter.payload) {
+      try { payload = JSON.parse(e.parameter.payload); } catch (pErr) { payload = e.parameter; }
+    } else {
+      payload = e.parameter;
+    }
+    return jsonResponse(submitLabRecord(payload));
+  }
+  if (action === 'saveEvaluation') {
+    let payload = {};
+    if (e.parameter.payload) {
+      try { payload = JSON.parse(e.parameter.payload); } catch (pErr) { payload = e.parameter; }
+    } else {
+      payload = e.parameter;
+    }
+    return jsonResponse(saveEvaluation(payload));
+  }
+  if (action === 'coordinatorLogin') {
+    let payload = {};
+    if (e.parameter.payload) {
+      try { payload = JSON.parse(e.parameter.payload); } catch (pErr) { payload = e.parameter; }
+    } else {
+      payload = e.parameter;
+    }
+    return jsonResponse(coordinatorLogin(payload));
+  }
+  if (action === 'coordinatorChangePassword') {
+    let payload = {};
+    if (e.parameter.payload) {
+      try { payload = JSON.parse(e.parameter.payload); } catch (pErr) { payload = e.parameter; }
+    } else {
+      payload = e.parameter;
+    }
+    return jsonResponse(coordinatorChangePassword(payload));
+  }
+  if (action === 'coordinatorSendOtp') {
+    let payload = {};
+    if (e.parameter.payload) {
+      try { payload = JSON.parse(e.parameter.payload); } catch (pErr) { payload = e.parameter; }
+    } else {
+      payload = e.parameter;
+    }
+    return jsonResponse(coordinatorSendOtp(payload));
+  }
+  if (action === 'coordinatorVerifyOtp') {
+    let payload = {};
+    if (e.parameter.payload) {
+      try { payload = JSON.parse(e.parameter.payload); } catch (pErr) { payload = e.parameter; }
+    } else {
+      payload = e.parameter;
+    }
+    return jsonResponse(coordinatorVerifyOtp(payload));
+  }
+  if (action === 'coordinatorResetPassword') {
+    let payload = {};
+    if (e.parameter.payload) {
+      try { payload = JSON.parse(e.parameter.payload); } catch (pErr) { payload = e.parameter; }
+    } else {
+      payload = e.parameter;
+    }
+    return jsonResponse(coordinatorResetPassword(payload));
+  }
+  if (action === 'login') {
+    return jsonResponse(
+      loginUserManual(
+        e.parameter.email,
+        e.parameter.regNo,
+        e.parameter.personalEmail,
+        e.parameter.deviceId,
+        e.parameter.portalRole
+      )
+    );
+  }
+  if (action === 'seedPart1') {
+    return jsonResponse(seedPart1Experiments());
+  }
+  if (action === 'setup') {
+    return jsonResponse(setupAllSheets());
+  }
+  return jsonResponse({ error: 'Unknown action: ' + action });
+}
+
+function jsonResponse(obj) {
+  return ContentService.createTextOutput(JSON.stringify(obj))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
+function getSheet(name) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sheet = ss.getSheetByName(name);
+  if (!sheet) {
+    sheet = ss.insertSheet(name);
+  }
+  return sheet;
+}
+
+// ==============================================================================
+// HELPER: DETECT IF SAME MAIL ID OR DEVICE ID IS USED FOR >1 STUDENT REG NO
+// ==============================================================================
+function detectMultiStudentProxy(regNo, personalEmail, deviceId) {
+  const cleanReg = (regNo || '').toString().trim().toUpperCase();
+  const cleanMail = (personalEmail || '').toString().trim().toLowerCase();
+  const cleanDev = (deviceId || '').toString().trim();
+
+  const hasValidDev = cleanDev && cleanDev !== 'UNKNOWN';
+  if (!cleanMail && !hasValidDev) {
+    return { isFlagged: false, otherRegs: [], message: 'CLEAR' };
+  }
+
+  const otherRegsSet = {};
+  const auditSheet = getSheet('LoginAudit');
+  const auditRows = auditSheet.getDataRange().getValues();
+  for (let i = 1; i < auditRows.length; i++) {
+    const rReg = String(auditRows[i][2] || '').trim().toUpperCase();
+    const rMail = String(auditRows[i][4] || '').trim().toLowerCase();
+    const rDev = String(auditRows[i][5] || '').trim();
+    if (!rReg || rReg === cleanReg) continue;
+
+    if ((cleanMail && rMail && rMail === cleanMail) || (hasValidDev && rDev && rDev !== 'UNKNOWN' && rDev === cleanDev)) {
+      otherRegsSet[rReg] = true;
+    }
+  }
+
+  const subSheet = getSheet('Submissions');
+  const subRows = subSheet.getDataRange().getValues();
+  for (let i = 1; i < subRows.length; i++) {
+    const sReg = String(subRows[i][3] || '').trim().toUpperCase();
+    const sMail = String(subRows[i][2] || '').trim().toLowerCase();
+    const sDev = String(subRows[i][9] || '').trim();
+    if (!sReg || sReg === cleanReg) continue;
+
+    if ((cleanMail && sMail && sMail === cleanMail) || (hasValidDev && sDev && sDev !== 'UNKNOWN' && sDev === cleanDev)) {
+      otherRegsSet[sReg] = true;
+    }
+  }
+
+  const otherRegs = Object.keys(otherRegsSet);
+  if (otherRegs.length > 0) {
+    return {
+      isFlagged: true,
+      otherRegs: otherRegs,
+      message: 'FLAGGED: Shared Mail ID / Device also used for RegNo(s): ' + otherRegs.join(', ')
+    };
+  }
+  return { isFlagged: false, otherRegs: [], message: 'CLEAR' };
+}
+
+// 1. STRICTLY VALIDATE AGAINST GOOGLE SHEET (FACULTY OR STUDENTS TAB)
+function loginUserManual(email, regNo, personalEmail, deviceId, portalRole) {
+  const cleanEmail = (email || '').trim().toLowerCase();
+  const cleanReg = (regNo || '').trim().toUpperCase();
+  const cleanPersonalMail = (personalEmail || '').trim().toLowerCase();
+  const cleanDeviceId = (deviceId || '').trim();
+  const requestedRole = (portalRole || '').toString().trim().toUpperCase();
+
+  if (!cleanEmail) {
+    return {
+      role: 'UNAUTHORIZED',
+      error: 'Access Denied: Email address is required.'
+    };
+  }
+
+  // 1. Check Faculty Sheet (only when Faculty portal is requested or no specific Student role/regNo provided)
+  if (requestedRole === 'FACULTY' || (!requestedRole && !cleanReg)) {
+    const facultySheet = getSheet('Faculty');
+    const facultyData = facultySheet.getDataRange().getValues();
+    if (facultyData.length <= 1) {
+      return {
+        role: 'UNAUTHORIZED',
+        error: 'Access Denied: Official Email (' + cleanEmail + ') is not authorized. The Faculty sheet is currently empty.'
+      };
+    }
+    for (let i = 1; i < facultyData.length; i++) {
+      const fEmail = (facultyData[i][0] || '').toString().trim().toLowerCase();
+      if (fEmail && fEmail === cleanEmail) {
+        return {
+          role: 'FACULTY',
+          email: cleanEmail,
+          name: facultyData[i][1] || cleanEmail,
+          department: facultyData[i][2] || 'Department of Computer Applications'
+        };
+      }
+    }
+    if (requestedRole === 'FACULTY') {
+      return {
+        role: 'UNAUTHORIZED',
+        error: 'Access Denied: Official Email (' + cleanEmail + ') is not authorized in the Faculty sheet. Please contact the administrator.'
+      };
+    }
+  }
+
+  // 2. Check Students Sheet (BOTH official email AND RegNo are strictly required)
+  if (!cleanReg) {
+    return {
+      role: 'UNAUTHORIZED',
+      error: 'Access Denied: Reg No is required. Please check credentials with your course teacher.'
+    };
+  }
+
+  const studentSheet = getSheet('Students');
+  const studentData = studentSheet.getDataRange().getValues();
+  if (studentData.length <= 1) {
+    return {
+      role: 'UNAUTHORIZED',
+      error: 'Access Denied: Official Email (' + cleanEmail + ') or Reg No (' + cleanReg + ') not found. Please check credentials with your course teacher.'
+    };
+  }
+
+  let emailFoundInStudents = false;
+  let regFoundInStudents = false;
+
+  for (let i = 1; i < studentData.length; i++) {
+    const sEmail = (studentData[i][0] || '').toString().trim().toLowerCase();
+    const sReg = (studentData[i][1] || '').toString().trim().toUpperCase();
+    if (sEmail && sEmail === cleanEmail) emailFoundInStudents = true;
+    if (sReg && sReg === cleanReg) regFoundInStudents = true;
+
+    if (sEmail && sReg && sEmail === cleanEmail && sReg === cleanReg) {
+      const stuName = studentData[i][2] || cleanEmail;
+      const stuDept = studentData[i][3] || 'Department of Computer Applications';
+
+      // Check if same Personal Mail ID or Device ID was already used for ANOTHER student!
+      const proxyCheck = detectMultiStudentProxy(sReg, cleanPersonalMail, cleanDeviceId);
+
+      // Record this login event in LoginAudit tab
+      const auditSheet = getSheet('LoginAudit');
+      const auditHeaders = [
+        'Timestamp', 'Official Email', 'Reg No', 'Student Name',
+        'Recorded Mail ID', 'Device ID', 'Other RegNos Used', 'Multi-Student Status'
+      ];
+      if (auditSheet.getLastRow() === 0) {
+        auditSheet.appendRow(auditHeaders);
+        auditSheet.getRange(1, 1, 1, auditHeaders.length).setFontWeight('bold');
+      }
+
+      const auditRow = [
+        new Date().toISOString(),
+        cleanEmail,
+        sReg,
+        stuName,
+        cleanPersonalMail,
+        cleanDeviceId || 'UNKNOWN',
+        proxyCheck.otherRegs.join(', '),
+        proxyCheck.isFlagged ? 'FLAGGED: MULTI-STUDENT PROXY' : 'CLEAR'
+      ];
+      auditSheet.appendRow(auditRow);
+      auditSheet.getRange(auditSheet.getLastRow(), 1, 1, auditRow.length).setNumberFormat('@');
+
+      return {
+        role: 'STUDENT',
+        email: cleanEmail,
+        personalEmail: cleanPersonalMail,
+        deviceId: cleanDeviceId,
+        multiStudentAlert: proxyCheck.isFlagged ? proxyCheck.message : '',
+        regNo: sReg,
+        name: stuName,
+        department: stuDept
+      };
+    }
+  }
+
+  if (emailFoundInStudents) {
+    return {
+      role: 'UNAUTHORIZED',
+      error: 'Access Denied: Reg No (' + cleanReg + ') mismatch for Official Email (' + cleanEmail + '). Please check credentials with your course teacher.'
+    };
+  }
+  if (regFoundInStudents) {
+    return {
+      role: 'UNAUTHORIZED',
+      error: 'Access Denied: Official Email (' + cleanEmail + ') mismatch for Reg No (' + cleanReg + '). Please check credentials with your course teacher.'
+    };
+  }
+
+  return {
+    role: 'UNAUTHORIZED',
+    error: 'Access Denied: Official Email (' + cleanEmail + ') or Reg No (' + cleanReg + ') mismatch. Please check credentials with your course teacher.'
+  };
+}
+
+// 2. FACULTY: SCHEDULE / UPDATE EXERCISE (WITH STARTER CODE, ASSESSMENT TYPE & PLAIN TEXT PROTECTION)
+function saveExercise(data) {
+  if (!data) return { success: false, error: 'No exercise payload provided' };
+
+  const sheet = getSheet('Exercises');
+  const id = (data.id || ('EX_' + Date.now())).toString().trim();
+
+  const standardHeaders = [
+    'Exercise ID', 'Title', 'Description', 'Open Time', 'Close Time',
+    'Public Input', 'Public Output', 'Private Input', 'Private Output',
+    'Starter Code', 'Category', 'Difficulty', 'Assessment Type'
+  ];
+
+  if (sheet.getLastRow() === 0) {
+    sheet.appendRow(standardHeaders);
+    sheet.getRange(1, 1, 1, standardHeaders.length).setFontWeight('bold');
+  } else {
+    const currentCols = sheet.getLastColumn();
+    const currentHeaders = sheet.getRange(1, 1, 1, Math.max(currentCols, 1)).getValues()[0].map(function(h) {
+      return String(h || '').trim().toLowerCase();
+    });
+
+    if (currentHeaders.indexOf('starter code') === -1) {
+      const newCol = sheet.getLastColumn() + 1;
+      sheet.getRange(1, newCol).setValue('Starter Code').setFontWeight('bold');
+    }
+    const refreshedHeaders = sheet.getRange(1, 1, 1, Math.max(sheet.getLastColumn(), 1)).getValues()[0].map(function(h) {
+      return String(h || '').trim().toLowerCase();
+    });
+    if (refreshedHeaders.indexOf('assessment type') === -1) {
+      const newCol = sheet.getLastColumn() + 1;
+      sheet.getRange(1, newCol).setValue('Assessment Type').setFontWeight('bold');
+    }
+  }
+
+  const rows = sheet.getDataRange().getValues();
+  let existingRowIndex = -1;
+
+  for (let i = 1; i < rows.length; i++) {
+    const rowId = (rows[i][0] || '').toString().trim();
+    const rowTitle = (rows[i][1] || '').toString().trim().toLowerCase();
+    if (rowId === id || (data.title && rowTitle === data.title.trim().toLowerCase())) {
+      existingRowIndex = i + 1;
+      break;
+    }
+  }
+
+  const assessmentType = String(data.assessmentType || 'LAB').trim().toUpperCase() === 'ESE' ? 'ESE' : 'LAB';
+
+  const rowValues = [
+    id,
+    data.title || '',
+    data.description || '',
+    data.openTime || '',
+    data.closeTime || '',
+    data.publicInput !== undefined ? String(data.publicInput) : '',
+    data.publicOutput !== undefined ? String(data.publicOutput) : '',
+    data.privateInput !== undefined ? String(data.privateInput) : '',
+    data.privateOutput !== undefined ? String(data.privateOutput) : '',
+    data.starterCode !== undefined ? String(data.starterCode) : '',
+    data.category || 'Basic Java & Operators',
+    data.difficulty || 'Easy',
+    assessmentType
+  ];
+
+  if (existingRowIndex > 0) {
+    const targetRange = sheet.getRange(existingRowIndex, 1, 1, rowValues.length);
+    targetRange.setNumberFormat('@');
+    targetRange.setValues([rowValues]);
+    return { success: true, message: assessmentType + ' question ' + id + ' updated successfully!' };
+  } else {
+    sheet.appendRow(rowValues);
+    const newRowIndex = sheet.getLastRow();
+    sheet.getRange(newRowIndex, 1, 1, rowValues.length).setNumberFormat('@');
+    return { success: true, message: assessmentType + ' question ' + id + ' scheduled successfully!' };
+  }
+}
+
+// 3. STUDENT & FACULTY: FETCH ACTIVE EXERCISES (WITH STARTER CODE & ASSESSMENT TYPE)
+function getActiveExercises() {
+  const sheet = getSheet('Exercises');
+  const rows = sheet.getDataRange().getValues();
+  if (rows.length <= 1) return [];
+
+  const headers = rows[0].map(function(h) { return String(h || '').trim().toLowerCase(); });
+  const idIdx = headers.indexOf('exercise id') !== -1 ? headers.indexOf('exercise id') : 0;
+  const titleIdx = headers.indexOf('title') !== -1 ? headers.indexOf('title') : 1;
+  const descIdx = headers.indexOf('description') !== -1 ? headers.indexOf('description') : 2;
+  const openIdx = headers.indexOf('open time') !== -1 ? headers.indexOf('open time') : 3;
+  const closeIdx = headers.indexOf('close time') !== -1 ? headers.indexOf('close time') : 4;
+  const pubInIdx = headers.indexOf('public input') !== -1 ? headers.indexOf('public input') : 5;
+  const pubOutIdx = headers.indexOf('public output') !== -1 ? headers.indexOf('public output') : 6;
+  const privInIdx = headers.indexOf('private input') !== -1 ? headers.indexOf('private input') : 7;
+  const privOutIdx = headers.indexOf('private output') !== -1 ? headers.indexOf('private output') : 8;
+  const starterIdx = headers.indexOf('starter code') !== -1 ? headers.indexOf('starter code') : 9;
+  const catIdx = headers.indexOf('category') !== -1 ? headers.indexOf('category') : 10;
+  const diffIdx = headers.indexOf('difficulty') !== -1 ? headers.indexOf('difficulty') : 11;
+  const typeIdx = headers.indexOf('assessment type') !== -1 ? headers.indexOf('assessment type') : 12;
+
+  const now = new Date().getTime();
+  const active = [];
+
+  for (let i = 1; i < rows.length; i++) {
+    const row = rows[i];
+    if (!row[idIdx] && !row[titleIdx]) continue;
+
+    const closeTimeVal = row[closeIdx];
+    const close = closeTimeVal ? new Date(closeTimeVal).getTime() : Infinity;
+
+    const isExpired = !isNaN(close) && close < now && (now - close > 86400000 * 7);
+    if (isExpired) continue;
+
+    const rawType = row[typeIdx] ? String(row[typeIdx]).trim().toUpperCase() : 'LAB';
+
+    active.push({
+      id: String(row[idIdx] || ('EX_' + i)),
+      title: String(row[titleIdx] || ''),
+      description: String(row[descIdx] || ''),
+      openTime: row[openIdx] ? String(row[openIdx]) : '',
+      closeTime: row[closeIdx] ? String(row[closeIdx]) : '',
+      publicInput: row[pubInIdx] !== undefined ? String(row[pubInIdx]) : '',
+      publicOutput: row[pubOutIdx] !== undefined ? String(row[pubOutIdx]) : '',
+      privateInput: row[privInIdx] !== undefined ? String(row[privInIdx]) : '',
+      privateOutput: row[privOutIdx] !== undefined ? String(row[privOutIdx]) : '',
+      starterCode: row[starterIdx] !== undefined ? String(row[starterIdx]) : '',
+      category: row[catIdx] ? String(row[catIdx]) : 'Basic Java & Operators',
+      difficulty: row[diffIdx] ? String(row[diffIdx]) : 'Easy',
+      assessmentType: rawType === 'ESE' ? 'ESE' : 'LAB'
+    });
+  }
+  return active;
+}
+
+// 4. STUDENT & FACULTY: SAVE SUBMISSIONS & VIOLATIONS (RECORDS OFFICIAL EMAIL, PERSONAL MAIL ID, DEVICE ID, ASSESSMENT TYPE)
+function saveSubmissionAndViolations(payload) {
+  if (!payload) return { success: false, error: 'No payload provided' };
+
+  const sub = payload.submission || payload || {};
+  const violations = payload.violations || [];
+
+  const officialEmail = (sub.studentEmail || sub.email || '').toString().trim().toLowerCase();
+  const personalMail = (sub.personalEmail || '').toString().trim().toLowerCase();
+  const regNo = (sub.regNo || '').toString().trim().toUpperCase();
+  const stuName = (sub.studentName || '').toString().trim();
+  const deviceId = (sub.deviceId || '').toString().trim();
+  const assessmentType = String(sub.assessmentType || 'LAB').trim().toUpperCase() === 'ESE' ? 'ESE' : 'LAB';
+
+  const proxyCheck = detectMultiStudentProxy(regNo, personalMail, deviceId);
+
+  const qualityArtifactStr = sub.qualityArtifact
+    ? (typeof sub.qualityArtifact === 'string' ? sub.qualityArtifact : JSON.stringify(sub.qualityArtifact))
+    : (sub.qualityArtifactJson ? String(sub.qualityArtifactJson) : '');
+
+  const subSheet = getSheet('Submissions');
+  const subHeaders = [
+    'Timestamp', 'Official Email', 'Recorded Mail ID', 'Reg No', 'Student Name',
+    'Exercise ID', 'Exercise Title', 'Status', 'Score', 'Device ID', 'Multi-Student Flag',
+    'Source Code', 'Assessment Type', 'Quality & Review JSON'
+  ];
+  if (subSheet.getLastRow() === 0) {
+    subSheet.appendRow(subHeaders);
+    subSheet.getRange(1, 1, 1, subHeaders.length).setFontWeight('bold');
+  } else {
+    if (subSheet.getLastColumn() < 13) {
+      subSheet.getRange(1, 13).setValue('Assessment Type').setFontWeight('bold');
+    }
+    if (subSheet.getLastColumn() < 14) {
+      subSheet.getRange(1, 14).setValue('Quality & Review JSON').setFontWeight('bold');
+    }
+  }
+
+  const subRow = [
+    sub.timestamp || new Date().toISOString(),
+    officialEmail,
+    personalMail,
+    regNo,
+    stuName,
+    sub.exerciseId || '',
+    sub.exerciseTitle || '',
+    sub.status || '',
+    sub.score !== undefined ? String(sub.score) : '0',
+    deviceId || 'UNKNOWN',
+    proxyCheck.isFlagged ? proxyCheck.message : 'CLEAR',
+    sub.sourceCode || sub.code || '',
+    assessmentType,
+    qualityArtifactStr
+  ];
+  subSheet.appendRow(subRow);
+  subSheet.getRange(subSheet.getLastRow(), 1, 1, subRow.length).setNumberFormat('@');
+
+  if (violations.length > 0) {
+    const vioSheet = getSheet('Violations');
+    const vioHeaders = [
+      'Timestamp', 'Official Email', 'Recorded Mail ID', 'Reg No', 'Student Name',
+      'Exercise ID', 'Violation Type', 'Details', 'Severity', 'Device ID'
+    ];
+    if (vioSheet.getLastRow() === 0) {
+      vioSheet.appendRow(vioHeaders);
+      vioSheet.getRange(1, 1, 1, vioHeaders.length).setFontWeight('bold');
+    }
+
+    for (let i = 0; i < violations.length; i++) {
+      const v = violations[i];
+      const vRow = [
+        v.timestamp || v.time || new Date().toISOString(),
+        v.studentEmail || officialEmail,
+        v.personalEmail || personalMail,
+        v.regNo || regNo,
+        v.studentName || stuName,
+        v.exerciseId || sub.exerciseId || '',
+        v.type || '',
+        v.details || '',
+        v.severity || 'medium',
+        v.deviceId || deviceId || 'UNKNOWN'
+      ];
+      vioSheet.appendRow(vRow);
+      vioSheet.getRange(vioSheet.getLastRow(), 1, 1, vRow.length).setNumberFormat('@');
+    }
+  }
+
+  return {
+    success: true,
+    multiStudentAlert: proxyCheck.isFlagged ? proxyCheck.message : '',
+    message: 'Submission & violations recorded successfully!'
+  };
+}
+
+function getSubmissions() {
+  const sheet = getSheet('Submissions');
+  const rows = sheet.getDataRange().getValues();
+  if (rows.length <= 1) return [];
+
+  const results = [];
+  for (let i = 1; i < rows.length; i++) {
+    const row = rows[i];
+    if (!row[1] && !row[3]) continue;
+    const score = parseFloat(row[8]) || 0;
+    const rawType = String(row[12] || 'LAB').trim().toUpperCase();
+    const rawQuality = row[13] ? String(row[13]) : '';
+    let parsedQuality = undefined;
+    if (rawQuality && rawQuality.charAt(0) === '{') {
+      try { parsedQuality = JSON.parse(rawQuality); } catch (qErr) {}
+    }
+    results.push({
+      id: 'SUB_SHEET_' + i,
+      timestamp: String(row[0] || ''),
+      studentEmail: String(row[1] || ''),
+      personalEmail: String(row[2] || ''),
+      regNo: String(row[3] || ''),
+      studentName: String(row[4] || ''),
+      exerciseId: String(row[5] || ''),
+      exerciseTitle: String(row[6] || ''),
+      status: String(row[7] || 'PENDING'),
+      score: score,
+      publicPassed: score >= 50,
+      privatePassed: score === 100,
+      publicLog: '',
+      privateLog: '',
+      deviceId: String(row[9] || ''),
+      multiStudentAlert: String(row[10] || '') === 'CLEAR' ? '' : String(row[10] || ''),
+      code: String(row[11] || ''),
+      assessmentType: rawType === 'ESE' ? 'ESE' : 'LAB',
+      qualityArtifactJson: rawQuality,
+      qualityArtifact: parsedQuality
+    });
+  }
+  return results.reverse();
+}
+
+// 5. STUDENT: SUBMIT LAB RECORD FOR FACULTY RUBRIC EVALUATION
+function submitLabRecord(payload) {
+  if (!payload) return { success: false, error: 'No payload provided' };
+  const sheet = getSheet('Evaluations');
+
+  const headers = [
+    'Timestamp', 'Official Email', 'Recorded Mail ID', 'Reg No', 'Student Name', 'Status',
+    'Concept (5)', 'Naming (1)', 'Documentation (1)', 'Output (3)', 'Total Marks (10)',
+    'Violations Count', 'Device ID', 'Multi-Student Flag', 'Faculty Remarks', 'Evaluated By',
+    'Assessment Type', 'Rubric Details JSON'
+  ];
+
+  if (sheet.getLastRow() === 0) {
+    sheet.appendRow(headers);
+    sheet.getRange(1, 1, 1, headers.length).setFontWeight('bold');
+  } else if (sheet.getLastColumn() < 18) {
+    if (sheet.getLastColumn() < 17) sheet.getRange(1, 17).setValue('Assessment Type').setFontWeight('bold');
+    sheet.getRange(1, 18).setValue('Rubric Details JSON').setFontWeight('bold');
+  }
+
+  const email = (payload.studentEmail || '').toString().trim().toLowerCase();
+  const personalMail = (payload.personalEmail || payload.loggedGmail || '').toString().trim().toLowerCase();
+  const regNo = (payload.regNo || '').toString().trim().toUpperCase();
+  const name = (payload.studentName || '').toString().trim();
+  const deviceId = (payload.deviceId || 'UNKNOWN').toString().trim();
+  const violationsCount = payload.antiCheatingViolationsCount !== undefined ? String(payload.antiCheatingViolationsCount) : '0';
+  const assessmentType = String(payload.assessmentType || 'LAB').trim().toUpperCase() === 'ESE' ? 'ESE' : 'LAB';
+
+  const proxyCheck = detectMultiStudentProxy(regNo, personalMail, deviceId);
+  const proxyFlagText = payload.multiStudentAlert || (proxyCheck.isFlagged ? proxyCheck.message : 'CLEAR');
+
+  const rows = sheet.getDataRange().getValues();
+  let existingIndex = -1;
+  for (let i = 1; i < rows.length; i++) {
+    const rReg = (rows[i][3] || '').toString().trim().toUpperCase();
+    const rType = String(rows[i][16] || 'LAB').trim().toUpperCase();
+    if (regNo && rReg === regNo && rType === assessmentType) {
+      existingIndex = i + 1;
+      break;
+    }
+  }
+
+  const rowValues = [
+    new Date().toISOString(),
+    email,
+    personalMail,
+    regNo,
+    name,
+    'PENDING_EVALUATION',
+    '', '', '', '', '',
+    violationsCount,
+    deviceId,
+    proxyFlagText,
+    'Submitted by student. Awaiting faculty rubric assessment.',
+    '',
+    assessmentType,
+    ''
+  ];
+
+  if (existingIndex > 0) {
+    const currentStatus = String(rows[existingIndex - 1][5] || '');
+    if (currentStatus === 'EVALUATED_APPROVED') {
+      return { success: true, message: 'Lab Record already evaluated and approved by faculty!' };
+    }
+    const range = sheet.getRange(existingIndex, 1, 1, rowValues.length);
+    range.setNumberFormat('@');
+    range.setValues([rowValues]);
+    return { success: true, message: 'Lab Record submitted to faculty for rubric evaluation!' };
+  } else {
+    sheet.appendRow(rowValues);
+    const newIdx = sheet.getLastRow();
+    sheet.getRange(newIdx, 1, 1, rowValues.length).setNumberFormat('@');
+    return { success: true, message: 'Lab Record submitted to faculty for rubric evaluation!' };
+  }
+}
+
+// 6. FACULTY: EVALUATE LAB RECORD OR ESE PRACTICAL WITH DYNAMIC RUBRICS
+function saveEvaluation(payload) {
+  if (!payload) return { success: false, error: 'No payload provided' };
+  const sheet = getSheet('Evaluations');
+
+  const headers = [
+    'Timestamp', 'Official Email', 'Recorded Mail ID', 'Reg No', 'Student Name', 'Status',
+    'Concept (5)', 'Naming (1)', 'Documentation (1)', 'Output (3)', 'Total Marks (10)',
+    'Violations Count', 'Device ID', 'Multi-Student Flag', 'Faculty Remarks', 'Evaluated By',
+    'Assessment Type', 'Rubric Details JSON'
+  ];
+
+  if (sheet.getLastRow() === 0) {
+    sheet.appendRow(headers);
+    sheet.getRange(1, 1, 1, headers.length).setFontWeight('bold');
+  } else if (sheet.getLastColumn() < 18) {
+    if (sheet.getLastColumn() < 17) sheet.getRange(1, 17).setValue('Assessment Type').setFontWeight('bold');
+    sheet.getRange(1, 18).setValue('Rubric Details JSON').setFontWeight('bold');
+  }
+
+  const email = (payload.studentEmail || '').toString().trim().toLowerCase();
+  const personalMail = (payload.personalEmail || payload.loggedGmail || '').toString().trim().toLowerCase();
+  const regNo = (payload.regNo || '').toString().trim().toUpperCase();
+  const name = (payload.studentName || '').toString().trim();
+  const deviceId = (payload.deviceId || 'UNKNOWN').toString().trim();
+  const assessmentType = String(payload.assessmentType || 'LAB').trim().toUpperCase() === 'ESE' ? 'ESE' : 'LAB';
+  const rubrics = payload.rubrics || payload.rubric || {};
+  const dynamicScores = payload.dynamicScores || {};
+  const maxTotalMarks = payload.maxTotalMarks !== undefined ? Number(payload.maxTotalMarks) : (assessmentType === 'ESE' ? 50 : 10);
+
+  let dynamicSum = 0;
+  const dynKeys = Object.keys(dynamicScores);
+  for (let k = 0; k < dynKeys.length; k++) {
+    dynamicSum += Number(dynamicScores[dynKeys[k]]) || 0;
+  }
+
+  const concept = rubrics.conceptImplemented !== undefined ? String(rubrics.conceptImplemented) : String(dynamicScores.conceptImplemented !== undefined ? dynamicScores.conceptImplemented : '');
+  const naming = rubrics.namingConventions !== undefined ? String(rubrics.namingConventions) : String(dynamicScores.namingConventions !== undefined ? dynamicScores.namingConventions : '');
+  const doc = rubrics.documentation !== undefined ? String(rubrics.documentation) : String(dynamicScores.documentation !== undefined ? dynamicScores.documentation : '');
+  const output = rubrics.output !== undefined ? String(rubrics.output) : String(dynamicScores.output !== undefined ? dynamicScores.output : '');
+  const total = rubrics.total !== undefined
+    ? String(rubrics.total)
+    : (rubrics.totalMarks !== undefined ? String(rubrics.totalMarks) : String(Number(dynamicSum.toFixed(1))));
+
+  const violCount = payload.antiCheatingViolationsCount !== undefined ? String(payload.antiCheatingViolationsCount) : '0';
+  const proxyCheck = detectMultiStudentProxy(regNo, personalMail, deviceId);
+  const proxyFlagText = payload.multiStudentAlert || (proxyCheck.isFlagged ? proxyCheck.message : 'CLEAR');
+  const remarks = payload.facultyRemarks || 'Verified and approved.';
+  const evalBy = payload.evaluatedBy || 'Faculty Admin';
+  const targetStatus =
+    payload.status === 'PENDING_EVALUATION' || payload.isVerifiedAndApproved === false
+      ? 'PENDING_EVALUATION'
+      : 'EVALUATED_APPROVED';
+
+  const detailsJson = JSON.stringify({
+    assessmentType: assessmentType,
+    maxTotalMarks: maxTotalMarks,
+    dynamicScores: dynamicScores
+  });
+
+  const rows = sheet.getDataRange().getValues();
+  let existingIndex = -1;
+  for (let i = 1; i < rows.length; i++) {
+    const rReg = (rows[i][3] || '').toString().trim().toUpperCase();
+    const rType = String(rows[i][16] || 'LAB').trim().toUpperCase();
+    if (regNo && rReg === regNo && rType === assessmentType) {
+      existingIndex = i + 1;
+      break;
+    }
+  }
+
+  const rowValues = [
+    new Date().toISOString(),
+    email,
+    personalMail,
+    regNo,
+    name,
+    targetStatus,
+    concept,
+    naming,
+    doc,
+    output,
+    total,
+    violCount,
+    deviceId,
+    proxyFlagText,
+    remarks,
+    evalBy,
+    assessmentType,
+    detailsJson
+  ];
+
+  if (existingIndex > 0) {
+    const range = sheet.getRange(existingIndex, 1, 1, rowValues.length);
+    range.setNumberFormat('@');
+    range.setValues([rowValues]);
+    return { success: true, message: assessmentType + ' evaluation saved and approved!' };
+  } else {
+    sheet.appendRow(rowValues);
+    const newIdx = sheet.getLastRow();
+    sheet.getRange(newIdx, 1, 1, rowValues.length).setNumberFormat('@');
+    return { success: true, message: assessmentType + ' evaluation saved and approved!' };
+  }
+}
+
+// 7. FETCH ALL EVALUATIONS FROM SPREADSHEET
+function getEvaluations() {
+  const sheet = getSheet('Evaluations');
+  const rows = sheet.getDataRange().getValues();
+  if (rows.length <= 1) return [];
+
+  const results = [];
+  for (let i = 1; i < rows.length; i++) {
+    const row = rows[i];
+    if (!row[1] && !row[3]) continue;
+
+    const concept = parseFloat(row[6]) || 0;
+    const naming = parseFloat(row[7]) || 0;
+    const documentation = parseFloat(row[8]) || 0;
+    const output = parseFloat(row[9]) || 0;
+    const total = parseFloat(row[10]) || (concept + naming + documentation + output);
+    const assessmentType = String(row[16] || 'LAB').trim().toUpperCase() === 'ESE' ? 'ESE' : 'LAB';
+
+    let dynamicScores = null;
+    let maxTotalMarks = assessmentType === 'ESE' ? 50 : 10;
+    if (row[17]) {
+      try {
+        const parsedDetails = JSON.parse(String(row[17]));
+        if (parsedDetails && parsedDetails.dynamicScores) {
+          dynamicScores = parsedDetails.dynamicScores;
+        }
+        if (parsedDetails && parsedDetails.maxTotalMarks) {
+          maxTotalMarks = Number(parsedDetails.maxTotalMarks) || maxTotalMarks;
+        }
+      } catch (jsonErr) {}
+    }
+
+    if (!dynamicScores && assessmentType === 'LAB' && String(row[5] || '') === 'EVALUATED_APPROVED') {
+      dynamicScores = {
+        conceptImplemented: concept,
+        namingConventions: naming,
+        documentation: documentation,
+        output: output
+      };
+    }
+
+    results.push({
+      id: 'EVAL_' + i,
+      timestamp: String(row[0] || ''),
+      assessmentType: assessmentType,
+      studentEmail: String(row[1] || ''),
+      personalEmail: String(row[2] || ''),
+      regNo: String(row[3] || ''),
+      studentName: String(row[4] || ''),
+      status: String(row[5] || 'PENDING_EVALUATION'),
+      rubrics: {
+        conceptImplemented: concept,
+        namingConventions: naming,
+        documentation: documentation,
+        output: output,
+        total: total
+      },
+      dynamicScores: dynamicScores || undefined,
+      maxTotalMarks: maxTotalMarks,
+      antiCheatingViolationsCount: parseInt(row[11], 10) || 0,
+      deviceId: String(row[12] || ''),
+      multiStudentAlert: String(row[13] || '') === 'CLEAR' ? '' : String(row[13] || ''),
+      facultyRemarks: String(row[14] || ''),
+      evaluatedBy: String(row[15] || ''),
+      isVerifiedAndApproved: String(row[5] || '') === 'EVALUATED_APPROVED'
+    });
+  }
+  return results;
+}
+
+// 8. FETCH ALL LOGIN AUDIT RECORDS FOR MULTI-STUDENT MONITORING
+function getLoginAudit() {
+  const sheet = getSheet('LoginAudit');
+  const rows = sheet.getDataRange().getValues();
+  if (rows.length <= 1) return [];
+
+  const results = [];
+  for (let i = 1; i < rows.length; i++) {
+    const row = rows[i];
+    if (!row[1] && !row[2]) continue;
+    results.push({
+      id: 'LOGIN_' + i,
+      timestamp: String(row[0] || ''),
+      officialEmail: String(row[1] || ''),
+      regNo: String(row[2] || ''),
+      studentName: String(row[3] || ''),
+      personalEmail: String(row[4] || ''),
+      deviceId: String(row[5] || ''),
+      otherRegNos: String(row[6] || ''),
+      status: String(row[7] || 'CLEAR')
+    });
+  }
+  return results;
+}
+
+// 8b. FETCH & ENROLL STUDENTS FROM STUDENTS SHEET
+function getStudents() {
+  const sheet = getSheet('Students');
+  const rows = sheet.getDataRange().getValues();
+  if (rows.length <= 1) return [];
+
+  const results = [];
+  for (let i = 1; i < rows.length; i++) {
+    const email = String(rows[i][0] || '').trim().toLowerCase();
+    const regNo = String(rows[i][1] || '').trim().toUpperCase();
+    if (!email && !regNo) continue;
+    results.push({
+      email: email,
+      regNo: regNo,
+      name: String(rows[i][2] || '').trim(),
+      department: String(rows[i][3] || 'Department of Computer Applications').trim()
+    });
+  }
+  return results;
+}
+
+function addStudent(payload) {
+  if (!payload) return { success: false, error: 'No student payload provided' };
+  const email = (payload.email || '').toString().trim().toLowerCase();
+  const regNo = (payload.regNo || '').toString().trim().toUpperCase();
+  const name = (payload.name || '').toString().trim();
+  const dept = (payload.department || 'Department of Computer Applications').toString().trim();
+  if (!email || !regNo) return { success: false, error: 'Email and RegNo are required' };
+
+  const sheet = getSheet('Students');
+  if (sheet.getLastRow() === 0) {
+    sheet.appendRow(['Email', 'RegNo', 'Name', 'Department']);
+    sheet.getRange(1, 1, 1, 4).setFontWeight('bold');
+  }
+
+  const rows = sheet.getDataRange().getValues();
+  for (let i = 1; i < rows.length; i++) {
+    const rEmail = String(rows[i][0] || '').trim().toLowerCase();
+    const rReg = String(rows[i][1] || '').trim().toUpperCase();
+    if (rEmail === email || rReg === regNo) {
+      const range = sheet.getRange(i + 1, 1, 1, 4);
+      range.setNumberFormat('@');
+      range.setValues([[email, regNo, name, dept]]);
+      return { success: true, message: 'Student ' + regNo + ' updated in Students sheet!' };
+    }
+  }
+
+  sheet.appendRow([email, regNo, name, dept]);
+  sheet.getRange(sheet.getLastRow(), 1, 1, 4).setNumberFormat('@');
+  return { success: true, message: 'Student ' + regNo + ' added to Students sheet!' };
+}
+
+// ==============================================================================
+// 8c. COURSE COORDINATOR: FACULTY / COURSE HANDLERS MANAGEMENT & OTP AUTH
+// ==============================================================================
+function hashCoordinatorPassword(plain) {
+  const raw = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, String(plain || ''), Utilities.Charset.UTF_8);
+  let hex = '';
+  for (let i = 0; i < raw.length; i++) {
+    let b = (raw[i] & 0xff).toString(16);
+    if (b.length === 1) b = '0' + b;
+    hex += b;
+  }
+  return hex;
+}
+
+function ensureCoordinatorAuthRow() {
+  const sheet = getSheet('CoordinatorAuth');
+  const headers = ['Username', 'PasswordHash', 'OfficialEmail', 'MustChangePassword', 'OtpCode', 'OtpExpiry', 'UpdatedAt'];
+  if (sheet.getLastRow() === 0) {
+    sheet.appendRow(headers);
+    sheet.getRange(1, 1, 1, headers.length).setFontWeight('bold');
+  }
+  const rows = sheet.getDataRange().getValues();
+  if (rows.length <= 1) {
+    const defaultRow = [
+      'coordinator',
+      hashCoordinatorPassword('Admin@123'),
+      '',
+      'TRUE',
+      '',
+      '',
+      new Date().toISOString()
+    ];
+    sheet.appendRow(defaultRow);
+    sheet.getRange(sheet.getLastRow(), 1, 1, defaultRow.length).setNumberFormat('@');
+  }
+  const refreshed = sheet.getDataRange().getValues();
+  return { sheet: sheet, rowIndex: 2, row: refreshed[1] };
+}
+
+function coordinatorLogin(payload) {
+  const p = payload || {};
+  const username = String(p.username || '').trim().toLowerCase();
+  const password = String(p.password || '');
+  if (!username || !password) {
+    return { success: false, error: 'Username and password are required.' };
+  }
+
+  const info = ensureCoordinatorAuthRow();
+  const storedUsername = String(info.row[0] || 'coordinator').trim().toLowerCase();
+  const storedHash = String(info.row[1] || '').trim();
+  const storedEmail = String(info.row[2] || '').trim().toLowerCase();
+  const mustChange = String(info.row[3] || 'TRUE').trim().toUpperCase() === 'TRUE';
+
+  if (username !== storedUsername || hashCoordinatorPassword(password) !== storedHash) {
+    return { success: false, error: 'Access Denied: Invalid Coordinator username or password.' };
+  }
+
+  return {
+    success: true,
+    role: 'COORDINATOR',
+    username: storedUsername,
+    email: storedEmail || (storedUsername + '@hindustanuniv.ac.in'),
+    officialEmail: storedEmail,
+    name: 'Course Coordinator',
+    department: 'Course Administration',
+    mustChangePassword: mustChange,
+    verifiedViaSheet: true
+  };
+}
+
+function coordinatorChangePassword(payload) {
+  const p = payload || {};
+  const currentPassword = String(p.currentPassword || '');
+  const newPassword = String(p.newPassword || '');
+  const officialEmail = String(p.officialEmail || '').trim().toLowerCase();
+
+  if (!currentPassword || !newPassword) {
+    return { success: false, error: 'Current password and new password are required.' };
+  }
+  if (newPassword.length < 6) {
+    return { success: false, error: 'New password must be at least 6 characters.' };
+  }
+
+  const info = ensureCoordinatorAuthRow();
+  const storedHash = String(info.row[1] || '').trim();
+  if (hashCoordinatorPassword(currentPassword) !== storedHash) {
+    return { success: false, error: 'Current password is incorrect.' };
+  }
+
+  const updatedEmail = officialEmail || String(info.row[2] || '').trim().toLowerCase();
+  info.sheet.getRange(info.rowIndex, 2).setNumberFormat('@').setValue(hashCoordinatorPassword(newPassword));
+  if (updatedEmail) {
+    info.sheet.getRange(info.rowIndex, 3).setNumberFormat('@').setValue(updatedEmail);
+  }
+  info.sheet.getRange(info.rowIndex, 4).setNumberFormat('@').setValue('FALSE');
+  info.sheet.getRange(info.rowIndex, 7).setNumberFormat('@').setValue(new Date().toISOString());
+
+  return {
+    success: true,
+    officialEmail: updatedEmail,
+    message: 'Coordinator password updated successfully in Google Sheet!'
+  };
+}
+
+function coordinatorSendOtp(payload) {
+  const p = payload || {};
+  const cleanEmail = String(p.email || '').trim().toLowerCase();
+  if (!cleanEmail || cleanEmail.indexOf('@') === -1) {
+    return { success: false, error: 'Please enter a valid official email address.' };
+  }
+
+  const info = ensureCoordinatorAuthRow();
+  const storedEmail = String(info.row[2] || '').trim().toLowerCase();
+
+  if (storedEmail && cleanEmail !== storedEmail) {
+    return {
+      success: false,
+      error: 'Access Denied: Entered email does not match the registered Coordinator Official Email.'
+    };
+  }
+
+  const otp = String(Math.floor(100000 + Math.random() * 900000));
+  const expiry = String(Date.now() + 10 * 60 * 1000);
+
+  info.sheet.getRange(info.rowIndex, 3).setNumberFormat('@').setValue(cleanEmail);
+  info.sheet.getRange(info.rowIndex, 5).setNumberFormat('@').setValue(otp);
+  info.sheet.getRange(info.rowIndex, 6).setNumberFormat('@').setValue(expiry);
+  info.sheet.getRange(info.rowIndex, 7).setNumberFormat('@').setValue(new Date().toISOString());
+
+  try {
+    MailApp.sendEmail({
+      to: cleanEmail,
+      subject: 'JavaLabPro - Course Coordinator Password Reset OTP',
+      body:
+        'Hello Course Coordinator,\n\n' +
+        'Your One-Time Password (OTP) to reset your JavaLabPro Course Coordinator password is:\n\n' +
+        '    ' + otp + '\n\n' +
+        'This OTP is valid for 10 minutes.\n\n' +
+        'If you did not request this reset, please ignore this email.\n\n' +
+        'Regards,\nJavaLabPro Portal'
+    });
+  } catch (mailErr) {
+    return {
+      success: false,
+      error: 'Failed to send OTP email: ' + mailErr.toString() + '. Run setupAllSheets() in Apps Script to authorize email sending and redeploy a New version.'
+    };
+  }
+
+  return {
+    success: true,
+    message: 'A 6-digit OTP has been sent to ' + cleanEmail + '. Please check your inbox.'
+  };
+}
+
+function coordinatorVerifyOtp(payload) {
+  const p = payload || {};
+  const cleanEmail = String(p.email || '').trim().toLowerCase();
+  const cleanOtp = String(p.otp || '').trim();
+
+  if (!cleanEmail || !cleanOtp) {
+    return { success: false, error: 'Official email and 6-digit OTP are required.' };
+  }
+
+  const info = ensureCoordinatorAuthRow();
+  const storedEmail = String(info.row[2] || '').trim().toLowerCase();
+  const storedOtp = String(info.row[4] || '').trim();
+  const storedExpiry = Number(info.row[5] || 0);
+
+  if (!storedOtp || (storedEmail && cleanEmail !== storedEmail)) {
+    return { success: false, error: 'Invalid OTP request. Please request a new OTP.' };
+  }
+  if (Date.now() > storedExpiry) {
+    return { success: false, error: 'OTP has expired. Please request a new OTP.' };
+  }
+  if (cleanOtp !== storedOtp) {
+    return { success: false, error: 'Invalid OTP code. Please verify and try again.' };
+  }
+
+  return {
+    success: true,
+    message: 'OTP verified successfully. Enter your new password below.'
+  };
+}
+
+function coordinatorResetPassword(payload) {
+  const p = payload || {};
+  const cleanEmail = String(p.email || '').trim().toLowerCase();
+  const cleanOtp = String(p.otp || '').trim();
+  const newPassword = String(p.newPassword || '');
+
+  if (!cleanEmail || !cleanOtp || !newPassword) {
+    return { success: false, error: 'Email, OTP, and new password are required.' };
+  }
+  if (newPassword.length < 6) {
+    return { success: false, error: 'New password must be at least 6 characters.' };
+  }
+
+  const verified = coordinatorVerifyOtp({ email: cleanEmail, otp: cleanOtp });
+  if (!verified.success) {
+    return verified;
+  }
+
+  const info = ensureCoordinatorAuthRow();
+  info.sheet.getRange(info.rowIndex, 2).setNumberFormat('@').setValue(hashCoordinatorPassword(newPassword));
+  info.sheet.getRange(info.rowIndex, 4).setNumberFormat('@').setValue('FALSE');
+  info.sheet.getRange(info.rowIndex, 5).setNumberFormat('@').setValue('');
+  info.sheet.getRange(info.rowIndex, 6).setNumberFormat('@').setValue('');
+  info.sheet.getRange(info.rowIndex, 7).setNumberFormat('@').setValue(new Date().toISOString());
+
+  return {
+    success: true,
+    message: 'Password reset successfully! You can now sign in with your new password.'
+  };
+}
+
+function getFaculty() {
+  const sheet = getSheet('Faculty');
+  const rows = sheet.getDataRange().getValues();
+  if (rows.length <= 1) return [];
+
+  const results = [];
+  for (let i = 1; i < rows.length; i++) {
+    const email = String(rows[i][0] || '').trim().toLowerCase();
+    const name = String(rows[i][1] || '').trim();
+    const department = String(rows[i][2] || 'Department of Computer Applications').trim();
+    if (!email && !name) continue;
+    results.push({
+      email: email,
+      name: name,
+      department: department
+    });
+  }
+  return results;
+}
+
+function saveFaculty(payload) {
+  if (!payload) return { success: false, error: 'No course handler payload provided.' };
+  const cleanEmail = String(payload.email || '').trim().toLowerCase();
+  const cleanName = String(payload.name || '').trim();
+  const cleanDept = String(payload.department || 'Department of Computer Applications').trim();
+  const originalEmail = String(payload.originalEmail || '').trim().toLowerCase();
+
+  if (!cleanEmail || !cleanName || !cleanDept) {
+    return { success: false, error: 'Email, Name, and Department are all required.' };
+  }
+
+  const sheet = getSheet('Faculty');
+  if (sheet.getLastRow() === 0) {
+    sheet.appendRow(['Email', 'Name', 'Department']);
+    sheet.getRange(1, 1, 1, 3).setFontWeight('bold');
+  }
+
+  const rows = sheet.getDataRange().getValues();
+  const lookupEmail = originalEmail || cleanEmail;
+  let targetRowIndex = -1;
+
+  for (let i = 1; i < rows.length; i++) {
+    const rowEmail = String(rows[i][0] || '').trim().toLowerCase();
+    if (rowEmail === lookupEmail) {
+      targetRowIndex = i + 1;
+      break;
+    }
+  }
+
+  if (originalEmail && originalEmail !== cleanEmail) {
+    for (let i = 1; i < rows.length; i++) {
+      const rowEmail = String(rows[i][0] || '').trim().toLowerCase();
+      if (rowEmail === cleanEmail && (i + 1) !== targetRowIndex) {
+        return { success: false, error: 'Another course teacher already uses email: ' + cleanEmail };
+      }
+    }
+  }
+
+  if (targetRowIndex > 0) {
+    const range = sheet.getRange(targetRowIndex, 1, 1, 3);
+    range.setNumberFormat('@');
+    range.setValues([[cleanEmail, cleanName, cleanDept]]);
+    return { success: true, message: 'Updated course teacher "' + cleanName + '" in Faculty sheet!' };
+  }
+
+  sheet.appendRow([cleanEmail, cleanName, cleanDept]);
+  sheet.getRange(sheet.getLastRow(), 1, 1, 3).setNumberFormat('@');
+  return { success: true, message: 'Added course teacher "' + cleanName + '" to Faculty sheet!' };
+}
+
+// ==============================================================================
+// 8d. EXAM MODE CONFIG (LAB vs ESE) & DYNAMIC RUBRIC TEMPLATES
+// ==============================================================================
+function ensureExamConfig() {
+  const sheet = getSheet('ExamConfig');
+  const headers = ['ConfigKey', 'ConfigValue', 'UpdatedBy', 'UpdatedAt'];
+  if (sheet.getLastRow() === 0) {
+    sheet.appendRow(headers);
+    sheet.getRange(1, 1, 1, headers.length).setFontWeight('bold');
+  }
+  const rows = sheet.getDataRange().getValues();
+  const hasMode = rows.some(function(r, idx) { return idx > 0 && String(r[0] || '').trim() === 'ESE_MODE'; });
+  const hasTitle = rows.some(function(r, idx) { return idx > 0 && String(r[0] || '').trim() === 'ESE_TITLE'; });
+
+  if (!hasMode) {
+    sheet.appendRow(['ESE_MODE', 'FALSE', 'System', new Date().toISOString()]);
+    sheet.getRange(sheet.getLastRow(), 1, 1, 4).setNumberFormat('@');
+  }
+  if (!hasTitle) {
+    sheet.appendRow(['ESE_TITLE', 'End Semester Practical Examination', 'System', new Date().toISOString()]);
+    sheet.getRange(sheet.getLastRow(), 1, 1, 4).setNumberFormat('@');
+  }
+  return sheet;
+}
+
+function getExamConfig() {
+  const sheet = ensureExamConfig();
+  const rows = sheet.getDataRange().getValues();
+  let eseEnabled = false;
+  let eseTitle = 'End Semester Practical Examination';
+  let updatedBy = '';
+  let updatedAt = '';
+
+  for (let i = 1; i < rows.length; i++) {
+    const key = String(rows[i][0] || '').trim();
+    const val = String(rows[i][1] || '').trim();
+    if (key === 'ESE_MODE') {
+      eseEnabled = val.toUpperCase() === 'TRUE';
+      updatedBy = String(rows[i][2] || '');
+      updatedAt = String(rows[i][3] || '');
+    } else if (key === 'ESE_TITLE' && val) {
+      eseTitle = val;
+    }
+  }
+
+  return {
+    eseEnabled: eseEnabled,
+    eseTitle: eseTitle,
+    updatedBy: updatedBy,
+    updatedAt: updatedAt
+  };
+}
+
+function saveExamConfig(payload) {
+  const p = payload || {};
+  const sheet = ensureExamConfig();
+  const eseEnabledStr = p.eseEnabled ? 'TRUE' : 'FALSE';
+  const eseTitle = String(p.eseTitle || 'End Semester Practical Examination').trim();
+  const updatedBy = String(p.updatedBy || 'Faculty Admin').trim();
+  const nowStr = new Date().toISOString();
+
+  const rows = sheet.getDataRange().getValues();
+  let modeRow = -1;
+  let titleRow = -1;
+  for (let i = 1; i < rows.length; i++) {
+    const key = String(rows[i][0] || '').trim();
+    if (key === 'ESE_MODE') modeRow = i + 1;
+    if (key === 'ESE_TITLE') titleRow = i + 1;
+  }
+
+  if (modeRow > 0) {
+    const r1 = sheet.getRange(modeRow, 1, 1, 4);
+    r1.setNumberFormat('@');
+    r1.setValues([['ESE_MODE', eseEnabledStr, updatedBy, nowStr]]);
+  } else {
+    sheet.appendRow(['ESE_MODE', eseEnabledStr, updatedBy, nowStr]);
+    sheet.getRange(sheet.getLastRow(), 1, 1, 4).setNumberFormat('@');
+  }
+
+  if (titleRow > 0) {
+    const r2 = sheet.getRange(titleRow, 1, 1, 4);
+    r2.setNumberFormat('@');
+    r2.setValues([['ESE_TITLE', eseTitle, updatedBy, nowStr]]);
+  } else {
+    sheet.appendRow(['ESE_TITLE', eseTitle, updatedBy, nowStr]);
+    sheet.getRange(sheet.getLastRow(), 1, 1, 4).setNumberFormat('@');
+  }
+
+  return {
+    success: true,
+    eseEnabled: Boolean(p.eseEnabled),
+    eseTitle: eseTitle,
+    message: p.eseEnabled
+      ? 'ESE Practical Mode ENABLED. Students now view ESE questions.'
+      : 'ESE Practical Mode DISABLED. Students now view regular Lab Exercises.'
+  };
+}
+
+function ensureRubricTemplates() {
+  const sheet = getSheet('RubricTemplates');
+  const headers = ['AssessmentType', 'CriterionId', 'Label', 'Description', 'MaxMarks', 'AutoRule', 'DisplayOrder'];
+  if (sheet.getLastRow() === 0) {
+    sheet.appendRow(headers);
+    sheet.getRange(1, 1, 1, headers.length).setFontWeight('bold');
+  }
+  const rows = sheet.getDataRange().getValues();
+  if (rows.length <= 1) {
+    const defaults = [
+      ['LAB', 'conceptImplemented', 'Coding Standards & Refactoring', 'Google Java Style naming, indentation, formatting, and refactored Java logic', '3', 'CODE_IMPLEMENTATION', '1'],
+      ['LAB', 'namingConventions', 'Static Analysis & Quality Report', 'Static code analysis defect fixes and documented code-quality report', '3', 'DOCUMENTATION', '2'],
+      ['LAB', 'documentation', 'Peer Review & Documentation', 'Javadoc comments, peer review checklist comments, and resolutions', '2', 'DOCUMENTATION', '3'],
+      ['LAB', 'output', 'Functional Test Execution', 'Public and hidden test case execution passes', '2', 'OUTPUT_TESTS', '4'],
+      ['ESE', 'algorithm', 'Coding Standards & Linting', 'Naming conventions, indentation, formatting, and Javadoc compliance', '15', 'DOCUMENTATION', '1'],
+      ['ESE', 'implementation', 'Refactoring & Static Analysis', 'Defect remediation, modular Java 17 design, and code-quality report', '15', 'CODE_IMPLEMENTATION', '2'],
+      ['ESE', 'execution', 'Functional Execution & Output', 'Public and hidden private test case verification', '10', 'OUTPUT_TESTS', '3'],
+      ['ESE', 'viva', 'Peer Review & Viva-Voce', 'Peer code review checklist defense and oral examination', '10', 'MANUAL', '4']
+    ];
+    for (let i = 0; i < defaults.length; i++) {
+      sheet.appendRow(defaults[i]);
+      sheet.getRange(sheet.getLastRow(), 1, 1, 7).setNumberFormat('@');
+    }
+  }
+  return sheet;
+}
+
+function getRubricTemplates() {
+  const sheet = ensureRubricTemplates();
+  const rows = sheet.getDataRange().getValues();
+  const lab = [];
+  const ese = [];
+
+  for (let i = 1; i < rows.length; i++) {
+    const r = rows[i];
+    const type = String(r[0] || 'LAB').trim().toUpperCase();
+    const id = String(r[1] || ('crit_' + i)).trim();
+    const label = String(r[2] || '').trim();
+    if (!label) continue;
+    const item = {
+      id: id,
+      label: label,
+      description: String(r[3] || '').trim(),
+      maxMarks: Number(r[4]) || 0,
+      autoRule: String(r[5] || 'MANUAL').trim()
+    };
+    if (type === 'ESE') {
+      ese.push(item);
+    } else {
+      lab.push(item);
+    }
+  }
+
+  return { LAB: lab, ESE: ese };
+}
+
+function saveRubricTemplates(payload) {
+  const p = payload || {};
+  const labList = Array.isArray(p.LAB) ? p.LAB : [];
+  const eseList = Array.isArray(p.ESE) ? p.ESE : [];
+
+  const sheet = ensureRubricTemplates();
+  const lastRow = sheet.getLastRow();
+  if (lastRow > 1) {
+    sheet.getRange(2, 1, lastRow - 1, 7).clearContent();
+  }
+
+  const allRows = [];
+  for (let i = 0; i < labList.length; i++) {
+    const c = labList[i];
+    allRows.push([
+      'LAB',
+      String(c.id || ('lab_' + (i + 1))),
+      String(c.label || 'Criterion'),
+      String(c.description || ''),
+      String(c.maxMarks || 0),
+      String(c.autoRule || 'MANUAL'),
+      String(i + 1)
+    ]);
+  }
+  for (let j = 0; j < eseList.length; j++) {
+    const e = eseList[j];
+    allRows.push([
+      'ESE',
+      String(e.id || ('ese_' + (j + 1))),
+      String(e.label || 'Criterion'),
+      String(e.description || ''),
+      String(e.maxMarks || 0),
+      String(e.autoRule || 'MANUAL'),
+      String(j + 1)
+    ]);
+  }
+
+  if (allRows.length > 0) {
+    const targetRange = sheet.getRange(2, 1, allRows.length, 7);
+    targetRange.setNumberFormat('@');
+    targetRange.setValues(allRows);
+  }
+
+  return {
+    success: true,
+    message: 'LAB and ESE rubric criteria saved to RubricTemplates sheet!'
+  };
+}
+
+// 9. INITIALIZE ALL 10 SHEETS WITH STANDARD HEADERS (NO SAMPLE COURSE DATA)
+function setupAllSheets() {
+  const exSheet = getSheet('Exercises');
+  if (exSheet.getLastRow() === 0) {
+    exSheet.appendRow([
+      'Exercise ID', 'Title', 'Description', 'Open Time', 'Close Time',
+      'Public Input', 'Public Output', 'Private Input', 'Private Output',
+      'Starter Code', 'Category', 'Difficulty', 'Assessment Type'
+    ]);
+    exSheet.getRange(1, 1, 1, 13).setFontWeight('bold');
+  }
+
+  const facSheet = getSheet('Faculty');
+  if (facSheet.getLastRow() === 0) {
+    facSheet.appendRow(['Email', 'Name', 'Department']);
+    facSheet.getRange(1, 1, 1, 3).setFontWeight('bold');
+  }
+
+  const stuSheet = getSheet('Students');
+  if (stuSheet.getLastRow() === 0) {
+    stuSheet.appendRow(['Email', 'RegNo', 'Name', 'Department']);
+    stuSheet.getRange(1, 1, 1, 4).setFontWeight('bold');
+  }
+
+  const loginSheet = getSheet('LoginAudit');
+  if (loginSheet.getLastRow() === 0) {
+    loginSheet.appendRow([
+      'Timestamp', 'Official Email', 'Reg No', 'Student Name',
+      'Recorded Mail ID', 'Device ID', 'Other RegNos Used', 'Multi-Student Status'
+    ]);
+    loginSheet.getRange(1, 1, 1, 8).setFontWeight('bold');
+  }
+
+  const subSheet = getSheet('Submissions');
+  if (subSheet.getLastRow() === 0) {
+    subSheet.appendRow([
+      'Timestamp', 'Official Email', 'Recorded Mail ID', 'Reg No', 'Student Name',
+      'Exercise ID', 'Exercise Title', 'Status', 'Score', 'Device ID', 'Multi-Student Flag',
+      'Source Code', 'Assessment Type', 'Quality & Review JSON'
+    ]);
+    subSheet.getRange(1, 1, 1, 14).setFontWeight('bold');
+  } else if (subSheet.getLastColumn() < 14) {
+    if (subSheet.getLastColumn() < 13) {
+      subSheet.getRange(1, 13).setValue('Assessment Type').setFontWeight('bold');
+    }
+    subSheet.getRange(1, 14).setValue('Quality & Review JSON').setFontWeight('bold');
+  }
+
+  const vioSheet = getSheet('Violations');
+  if (vioSheet.getLastRow() === 0) {
+    vioSheet.appendRow([
+      'Timestamp', 'Official Email', 'Recorded Mail ID', 'Reg No', 'Student Name',
+      'Exercise ID', 'Violation Type', 'Details', 'Severity', 'Device ID'
+    ]);
+    vioSheet.getRange(1, 1, 1, 10).setFontWeight('bold');
+  }
+
+  const evalSheet = getSheet('Evaluations');
+  if (evalSheet.getLastRow() === 0) {
+    evalSheet.appendRow([
+      'Timestamp', 'Official Email', 'Recorded Mail ID', 'Reg No', 'Student Name', 'Status',
+      'Concept (5)', 'Naming (1)', 'Documentation (1)', 'Output (3)', 'Total Marks (10)',
+      'Violations Count', 'Device ID', 'Multi-Student Flag', 'Faculty Remarks', 'Evaluated By',
+      'Assessment Type', 'Rubric Details JSON'
+    ]);
+    evalSheet.getRange(1, 1, 1, 18).setFontWeight('bold');
+  }
+
+  ensureCoordinatorAuthRow();
+  ensureExamConfig();
+  ensureRubricTemplates();
+
+  return { success: true, message: 'All 10 Google Sheet tabs initialized cleanly (Part 1 Quality & Review column, ExamConfig & RubricTemplates ready).' };
+}
+
+// 10. SEED THE 5 PART 1 EXPERIMENTS (Mapped to The Account Class)
+function seedPart1Experiments() {
+  const openTime = '2026-01-01T00:00';
+  const closeTime = '2027-12-31T23:59';
+  const accountBrief =
+    'Account Class Specification:\n' +
+    '• private int id (default 0), private float balance (default 100), private float annualInterestRate (default 0).\n' +
+    '• Constructors: Account() and Account(int id, float balance, float annualInterestRate).\n' +
+    '• Accessor & mutator methods for id, balance, and annualInterestRate.\n' +
+    '• getMonthlyInterestRate() -> (annualInterestRate / 100.0f) / 12.0f\n' +
+    '• getMonthlyInterest() -> balance * getMonthlyInterestRate()\n' +
+    '• withdraw(float amount) and deposit(float amount)\n' +
+    '• Test Program: id = 1122, balance = $20,000, annualInterestRate = 4.5%, withdraw $2,500, deposit $3,000, and print id, balance, monthly interest rate, and monthly interest.';
+
+  const experiments = [
+    {
+      id: 'P1_EXP1',
+      title: 'Exp 1: Industry Naming Conventions & Refactoring (The Account Class)',
+      description:
+        'Objective:\n' +
+        'Refactor the non-compliant Account class and test driver to strictly follow Google Java Style naming conventions:\n' +
+        '• Replace non-compliant fields/variables (acc_id, bal_amt, ann_rate, w_amt, d_amt) with exact lowerCamelCase names (id, balance, annualInterestRate, withdrawAmount, depositAmount).\n' +
+        '• Rename methods (Get_Monthly_Rate, Get_Monthly_Int, Withdraw_Amt, Deposit_Amt) to lowerCamelCase (getMonthlyInterestRate, getMonthlyInterest, withdraw, deposit).\n' +
+        '• Convert hardcoded values into private static final UPPER_SNAKE_CASE constants.\n\n' +
+        accountBrief +
+        '\n\nInput Format:\nid (int), balance (float), annualInterestRate (float), withdrawAmount (float), depositAmount (float)\n' +
+        'Output Format:\nAccount ID: <id>\nBalance: <2_decimals>\nMonthly Interest Rate: <5_decimals>\nMonthly Interest: <2_decimals>',
+      openTime: openTime,
+      closeTime: closeTime,
+      publicInput: '1122 20000 4.5 2500 3000',
+      publicOutput: 'Account ID: 1122\nBalance: 20500.00\nMonthly Interest Rate: 0.00375\nMonthly Interest: 76.88',
+      privateInput: '1001 10000 6.0 1500 500',
+      privateOutput: 'Account ID: 1001\nBalance: 9000.00\nMonthly Interest Rate: 0.00500\nMonthly Interest: 45.00',
+      starterCode: 'import java.util.Scanner;\n\nclass Account {\n    static final float def_bal = 100.0f;\n    private int acc_id = 0;\n    private float bal_amt = def_bal;\n    private float ann_rate = 0.0f;\n\n    public Account() {\n    }\n\n    public Account(int acc_id, float bal_amt, float ann_rate) {\n        this.acc_id = acc_id;\n        this.bal_amt = bal_amt;\n        this.ann_rate = ann_rate;\n    }\n\n    public int get_id() { return acc_id; }\n    public void set_id(int acc_id) { this.acc_id = acc_id; }\n    public float get_bal() { return bal_amt; }\n    public void set_bal(float bal_amt) { this.bal_amt = bal_amt; }\n    public float get_rate() { return ann_rate; }\n    public void set_rate(float ann_rate) { this.ann_rate = ann_rate; }\n\n    public float Get_Monthly_Rate() {\n        return (ann_rate / 100.0f) / 12.0f;\n    }\n\n    public float Get_Monthly_Int() {\n        return bal_amt * Get_Monthly_Rate();\n    }\n\n    public void Withdraw_Amt(float a) {\n        if (a > 0 && a <= bal_amt) bal_amt -= a;\n    }\n\n    public void Deposit_Amt(float d) {\n        if (d > 0) bal_amt += d;\n    }\n}\n\npublic class Main {\n    public static void main(String[] args) {\n        Scanner s = new Scanner(System.in);\n        int i = s.nextInt();\n        float b = s.nextFloat();\n        float r = s.nextFloat();\n        float w_amt = s.nextFloat();\n        float d_amt = s.nextFloat();\n\n        Account acc_obj = new Account(i, b, r);\n        acc_obj.Withdraw_Amt(w_amt);\n        acc_obj.Deposit_Amt(d_amt);\n\n        System.out.println("Account ID: " + acc_obj.get_id());\n        System.out.printf("Balance: %.2f%n", acc_obj.get_bal());\n        System.out.printf("Monthly Interest Rate: %.5f%n", acc_obj.Get_Monthly_Rate());\n        System.out.printf("Monthly Interest: %.2f%n", acc_obj.Get_Monthly_Int());\n    }\n}',
+      category: 'Part 1: Naming & Formatting',
+      difficulty: 'Easy',
+      assessmentType: 'LAB'
+    },
+    {
+      id: 'P1_EXP2',
+      title: 'Exp 2: Code Formatting, Indentation & Magic Constant Elimination (The Account Class)',
+      description:
+        'Objective:\n' +
+        'Apply industry formatting rules (4-space indentation, K&R braces, operator spacing, <= 100 char lines) and eliminate magic constants inside the Account class:\n' +
+        '• Convert tabs, Allman `{` braces, and multi-statement lines into clean 4-space K&R formatting.\n' +
+        '• Replace magic literals (`100.0f` default balance, `100.0f` percent divisor, `12.0f` months/year) with `private static final UPPER_SNAKE_CASE` constants.\n\n' +
+        accountBrief +
+        '\n\nInput Format:\nid (int), balance (float), annualInterestRate (float), withdrawAmount (float), depositAmount (float)\n' +
+        'Output Format:\nAccount ID: <id>\nBalance: <2_decimals>\nMonthly Interest Rate: <5_decimals>\nMonthly Interest: <2_decimals>',
+      openTime: openTime,
+      closeTime: closeTime,
+      publicInput: '1122 20000 4.5 2500 3000',
+      publicOutput: 'Account ID: 1122\nBalance: 20500.00\nMonthly Interest Rate: 0.00375\nMonthly Interest: 76.88',
+      privateInput: '1001 10000 6.0 1500 500',
+      privateOutput: 'Account ID: 1001\nBalance: 9000.00\nMonthly Interest Rate: 0.00500\nMonthly Interest: 45.00',
+      starterCode: 'import java.util.Scanner;\nclass Account\n{\n\tprivate int id=0;\n\tprivate float balance=100.0f;\n\tprivate float annualInterestRate=0.0f;\n\tpublic Account(){}\n\tpublic Account(int id,float balance,float annualInterestRate)\n\t{\n\tthis.id=id;this.balance=balance;this.annualInterestRate=annualInterestRate;\n\t}\n\tpublic int getId(){return id;}\n\tpublic void setId(int id){this.id=id;}\n\tpublic float getBalance(){return balance;}\n\tpublic void setBalance(float balance){this.balance=balance;}\n\tpublic float getAnnualInterestRate(){return annualInterestRate;}\n\tpublic void setAnnualInterestRate(float annualInterestRate){this.annualInterestRate=annualInterestRate;}\n\tpublic float getMonthlyInterestRate(){return (annualInterestRate/100.0f)/12.0f;}\n\tpublic float getMonthlyInterest(){return balance*getMonthlyInterestRate();}\n\tpublic void withdraw(float amount){if(amount>0&&amount<=balance){balance-=amount;}}\n\tpublic void deposit(float amount){if(amount>0){balance+=amount;}}\n}\npublic class Main\n{\n\tpublic static void main(String[] args)\n\t{\n\tScanner sc=new Scanner(System.in);\n\tint id=sc.nextInt();float bal=sc.nextFloat();float rate=sc.nextFloat();float wAmt=sc.nextFloat();float dAmt=sc.nextFloat();\n\tAccount account=new Account(id,bal,rate);account.withdraw(wAmt);account.deposit(dAmt);\n\tSystem.out.println("Account ID: "+account.getId());System.out.printf("Balance: %.2f%n",account.getBalance());System.out.printf("Monthly Interest Rate: %.5f%n",account.getMonthlyInterestRate());System.out.printf("Monthly Interest: %.2f%n",account.getMonthlyInterest());\n\t}\n}',
+      category: 'Part 1: Naming & Formatting',
+      difficulty: 'Easy',
+      assessmentType: 'LAB'
+    },
+    {
+      id: 'P1_EXP3',
+      title: 'Exp 3: Javadoc Commenting & Dead Code Cleanup (The Account Class)',
+      description:
+        'Objective:\n' +
+        'Document the Account class and test driver according to Javadoc standards and remove commented-out dead code:\n' +
+        '• Add class-level Javadoc (`/** ... */`) above `Account` and `Main`.\n' +
+        '• Add method-level Javadoc with `@param` and `@return` tags for constructors, getters/setters, `getMonthlyInterestRate()`, `getMonthlyInterest()`, `withdraw()`, and `deposit()`.\n' +
+        '• Remove all obsolete commented-out code blocks.\n\n' +
+        accountBrief +
+        '\n\nInput Format:\nid (int), balance (float), annualInterestRate (float), withdrawAmount (float), depositAmount (float)\n' +
+        'Output Format:\nAccount ID: <id>\nBalance: <2_decimals>\nMonthly Interest Rate: <5_decimals>\nMonthly Interest: <2_decimals>',
+      openTime: openTime,
+      closeTime: closeTime,
+      publicInput: '1122 20000 4.5 2500 3000',
+      publicOutput: 'Account ID: 1122\nBalance: 20500.00\nMonthly Interest Rate: 0.00375\nMonthly Interest: 76.88',
+      privateInput: '1001 10000 6.0 1500 500',
+      privateOutput: 'Account ID: 1001\nBalance: 9000.00\nMonthly Interest Rate: 0.00500\nMonthly Interest: 45.00',
+      starterCode: 'import java.util.Scanner;\n\nclass Account {\n    private static final float PERCENT_DIVISOR = 100.0f;\n    private static final float MONTHS_IN_YEAR = 12.0f;\n    private int id = 0;\n    private float balance = 100.0f;\n    private float annualInterestRate = 0.0f;\n\n    // private float legacyFee = 15.0f;\n\n    public Account() {\n    }\n\n    public Account(int id, float balance, float annualInterestRate) {\n        this.id = id;\n        this.balance = balance;\n        this.annualInterestRate = annualInterestRate;\n    }\n\n    public int getId() {\n        return id;\n    }\n\n    public void setId(int id) {\n        this.id = id;\n    }\n\n    public float getBalance() {\n        return balance;\n    }\n\n    public void setBalance(float balance) {\n        this.balance = balance;\n    }\n\n    public float getAnnualInterestRate() {\n        return annualInterestRate;\n    }\n\n    public void setAnnualInterestRate(float annualInterestRate) {\n        this.annualInterestRate = annualInterestRate;\n    }\n\n    public float getMonthlyInterestRate() {\n        // double oldRate = annualInterestRate / 1200;\n        return (annualInterestRate / PERCENT_DIVISOR) / MONTHS_IN_YEAR;\n    }\n\n    public float getMonthlyInterest() {\n        return balance * getMonthlyInterestRate();\n    }\n\n    public void withdraw(float amount) {\n        if (amount > 0 && amount <= balance) {\n            balance -= amount;\n        }\n    }\n\n    public void deposit(float amount) {\n        if (amount > 0) {\n            balance += amount;\n        }\n    }\n}\n\npublic class Main {\n    public static void main(String[] args) {\n        Scanner scanner = new Scanner(System.in);\n        int accountId = scanner.nextInt();\n        float initialBalance = scanner.nextFloat();\n        float annualRate = scanner.nextFloat();\n        float withdrawAmount = scanner.nextFloat();\n        float depositAmount = scanner.nextFloat();\n        // System.out.println("Debug: creating Account");\n\n        Account account = new Account(accountId, initialBalance, annualRate);\n        account.withdraw(withdrawAmount);\n        account.deposit(depositAmount);\n\n        System.out.println("Account ID: " + account.getId());\n        System.out.printf("Balance: %.2f%n", account.getBalance());\n        System.out.printf("Monthly Interest Rate: %.5f%n", account.getMonthlyInterestRate());\n        System.out.printf("Monthly Interest: %.2f%n", account.getMonthlyInterest());\n        scanner.close();\n    }\n}',
+      category: 'Part 1: Javadoc & Commenting',
+      difficulty: 'Medium',
+      assessmentType: 'LAB'
+    },
+    {
+      id: 'P1_EXP4',
+      title: 'Exp 4: Static Code Analysis & Code-Quality Report (The Account Class)',
+      description:
+        'Objective:\n' +
+        'Run Static Code Analysis on the Account implementation, fix every detected HIGH/MEDIUM defect, and prepare a formal Code-Quality Report:\n' +
+        '• Fix unused variables (`tempFee`, `auditStatus`), `String ==` defect (`accountMode == "STANDARD"`), unclosed `Scanner`, magic numbers (`100.0f`, `12.0f`), and deep conditional nesting in `withdraw()`.\n' +
+        '• Open "Lint & Static Analysis" -> click "Import Detected Issues" and record each issue and fix applied.\n\n' +
+        accountBrief +
+        '\n\nInput Format:\nid (int), balance (float), annualInterestRate (float), withdrawAmount (float), depositAmount (float)\n' +
+        'Output Format:\nAccount ID: <id>\nBalance: <2_decimals>\nMonthly Interest Rate: <5_decimals>\nMonthly Interest: <2_decimals>',
+      openTime: openTime,
+      closeTime: closeTime,
+      publicInput: '1122 20000 4.5 2500 3000',
+      publicOutput: 'Account ID: 1122\nBalance: 20500.00\nMonthly Interest Rate: 0.00375\nMonthly Interest: 76.88',
+      privateInput: '1001 10000 6.0 1500 500',
+      privateOutput: 'Account ID: 1001\nBalance: 9000.00\nMonthly Interest Rate: 0.00500\nMonthly Interest: 45.00',
+      starterCode: 'import java.util.Scanner;\n\nclass Account {\n    private int id = 0;\n    private float balance = 100.0f;\n    private float annualInterestRate = 0.0f;\n\n    public Account() {\n    }\n\n    public Account(int id, float balance, float annualInterestRate) {\n        this.id = id;\n        this.balance = balance;\n        this.annualInterestRate = annualInterestRate;\n    }\n\n    public int getId() { return id; }\n    public void setId(int id) { this.id = id; }\n    public float getBalance() { return balance; }\n    public void setBalance(float balance) { this.balance = balance; }\n    public float getAnnualInterestRate() { return annualInterestRate; }\n    public void setAnnualInterestRate(float annualInterestRate) { this.annualInterestRate = annualInterestRate; }\n\n    public float getMonthlyInterestRate() {\n        return (annualInterestRate / 100.0f) / 12.0f;\n    }\n\n    public float getMonthlyInterest() {\n        return balance * getMonthlyInterestRate();\n    }\n\n    public void withdraw(float amount) {\n        String accountMode = "ACTIVE";\n        if (accountMode == "ACTIVE") {\n            if (amount > 0) {\n                if (balance > 0) {\n                    if (amount <= balance) {\n                        balance -= amount;\n                    }\n                }\n            }\n        }\n    }\n\n    public void deposit(float amount) {\n        if (amount > 0) {\n            balance += amount;\n        }\n    }\n}\n\npublic class Main {\n    public static void main(String[] args) {\n        Scanner scanner = new Scanner(System.in);\n        int accountId = scanner.nextInt();\n        float initialBalance = scanner.nextFloat();\n        float annualRate = scanner.nextFloat();\n        float withdrawAmount = scanner.nextFloat();\n        float depositAmount = scanner.nextFloat();\n        double tempFee = 25.0;\n        boolean auditFlag = false;\n\n        Account account = new Account(accountId, initialBalance, annualRate);\n        account.withdraw(withdrawAmount);\n        account.deposit(depositAmount);\n\n        System.out.println("Account ID: " + account.getId());\n        System.out.printf("Balance: %.2f%n", account.getBalance());\n        System.out.printf("Monthly Interest Rate: %.5f%n", account.getMonthlyInterestRate());\n        System.out.printf("Monthly Interest: %.2f%n", account.getMonthlyInterest());\n    }\n}',
+      category: 'Part 1: Static Code Analysis',
+      difficulty: 'Medium',
+      assessmentType: 'LAB'
+    },
+    {
+      id: 'P1_EXP5',
+      title: 'Exp 5: Peer Code Review Exercise & Final Refactoring (The Account Class)',
+      description:
+        'Objective:\n' +
+        'Perform a complete end-to-end refactoring and Peer Code Review exercise on the Account class:\n' +
+        '1. Refactor the entire Account class and test program to pass all Google Java Style checks (naming, 4-space K&R formatting, Javadoc, `static final` constants, zero static analysis defects, >= 90/100 Quality Score).\n' +
+        '2. Complete the 6-item Peer Code Review Checklist in the "Peer Review Checklist" tab (Reviewer Name, RegNo, Checklist Statuses, Review Comments, and Resolutions).\n' +
+        '3. Verify the test case (id=1122, balance=20000, annualInterestRate=4.5%, withdraw=2500, deposit=3000) and hidden test case before submission.\n\n' +
+        accountBrief +
+        '\n\nInput Format:\nid (int), balance (float), annualInterestRate (float), withdrawAmount (float), depositAmount (float)\n' +
+        'Output Format:\nAccount ID: <id>\nBalance: <2_decimals>\nMonthly Interest Rate: <5_decimals>\nMonthly Interest: <2_decimals>',
+      openTime: openTime,
+      closeTime: closeTime,
+      publicInput: '1122 20000 4.5 2500 3000',
+      publicOutput: 'Account ID: 1122\nBalance: 20500.00\nMonthly Interest Rate: 0.00375\nMonthly Interest: 76.88',
+      privateInput: '1001 10000 6.0 1500 500',
+      privateOutput: 'Account ID: 1001\nBalance: 9000.00\nMonthly Interest Rate: 0.00500\nMonthly Interest: 45.00',
+      starterCode: 'import java.util.Scanner;\nclass Account\n{\n\tprivate int acc_id = 0;\n\tprivate float bal = 100.0f;\n\tprivate float ann_rate = 0.0f;\n\tpublic Account(){}\n\tpublic Account(int id,float balance,float annualInterestRate)\n\t{\n\t\tthis.acc_id=id;this.bal=balance;this.ann_rate=annualInterestRate;\n\t}\n\tpublic int getId(){return acc_id;}\n\tpublic void setId(int id){this.acc_id=id;}\n\tpublic float getBalance(){return bal;}\n\tpublic void setBalance(float balance){this.bal=balance;}\n\tpublic float getAnnualInterestRate(){return ann_rate;}\n\tpublic void setAnnualInterestRate(float annualInterestRate){this.ann_rate=annualInterestRate;}\n\tpublic float getMonthlyInterestRate(){return (ann_rate/100.0f)/12.0f;}\n\tpublic float getMonthlyInterest(){return bal*getMonthlyInterestRate();}\n\tpublic void withdraw(float a){\n\t\t// float min_bal = 0.0f;\n\t\tif(a>0&&a<=bal){bal-=a;}\n\t}\n\tpublic void deposit(float d){if(d>0){bal+=d;}}\n}\npublic class Main\n{\n\tpublic static void main(String[] args)\n\t{\n\t\tScanner s=new Scanner(System.in);\n\t\tint id=s.nextInt();float bal=s.nextFloat();float rate=s.nextFloat();float w_amt=s.nextFloat();float d_amt=s.nextFloat();\n\t\tint unused_check=99;\n\t\tString tier="ACTIVE";\n\t\tAccount acc=new Account(id,bal,rate);\n\t\tif(tier=="ACTIVE"){acc.withdraw(w_amt);acc.deposit(d_amt);}\n\t\tSystem.out.println("Account ID: "+acc.getId());\n\t\tSystem.out.printf("Balance: %.2f%n",acc.getBalance());\n\t\tSystem.out.printf("Monthly Interest Rate: %.5f%n",acc.getMonthlyInterestRate());\n\t\tSystem.out.printf("Monthly Interest: %.2f%n",acc.getMonthlyInterest());\n\t}\n}',
+      category: 'Part 1: Peer Code Review',
+      difficulty: 'Hard',
+      assessmentType: 'LAB'
+    }
+  ];
+
+  for (let i = 0; i < experiments.length; i++) {
+    saveExercise(experiments[i]);
+  }
+  return { success: true, count: experiments.length, message: 'Seeded 5 Part 1 Lab Experiments (Account Class) into Exercises sheet!' };
+}

@@ -1,0 +1,672 @@
+import React, { useState } from 'react';
+import { AssessmentType, Exercise } from '../../types';
+import {
+  Plus,
+  Calendar,
+  Clock,
+  Play,
+  FileCode,
+  Eye,
+  EyeOff,
+  Code2,
+  X,
+  GraduationCap,
+  FlaskConical,
+  Sparkles,
+  Loader2,
+} from 'lucide-react';
+import { JavaRunnerService } from '../../services/javaRunner';
+import { PART1_EXERCISES } from '../../data/part1Experiments';
+
+interface ExerciseManagerProps {
+  exercises: Exercise[];
+  onSaveExercise: (exercise: Exercise) => Promise<void> | void;
+  onDeleteExercise?: (id: string) => void;
+}
+
+export const ExerciseManager: React.FC<ExerciseManagerProps> = ({
+  exercises,
+  onSaveExercise,
+}) => {
+  const [showModal, setShowModal] = useState(false);
+  const [editingEx, setEditingEx] = useState<Exercise | null>(null);
+  const [typeFilter, setTypeFilter] = useState<'ALL' | AssessmentType>('ALL');
+
+  const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
+  const [category, setCategory] = useState('Arrays & Algorithms');
+  const [difficulty, setDifficulty] = useState<'Easy' | 'Medium' | 'Hard'>('Easy');
+  const [assessmentType, setAssessmentType] = useState<AssessmentType>('LAB');
+  const [openTime, setOpenTime] = useState('');
+  const [closeTime, setCloseTime] = useState('');
+  const [publicInput, setPublicInput] = useState('');
+  const [publicOutput, setPublicOutput] = useState('');
+  const [privateInput, setPrivateInput] = useState('');
+  const [privateOutput, setPrivateOutput] = useState('');
+  const [starterCode, setStarterCode] = useState('');
+
+  const [verifying, setVerifying] = useState(false);
+  const [seedingPart1, setSeedingPart1] = useState(false);
+  const [verifyLog, setVerifyLog] = useState<{ public: string; private: string } | null>(null);
+
+  const handleSeedPart1Experiments = async () => {
+    setSeedingPart1(true);
+    try {
+      for (const ex of PART1_EXERCISES) {
+        await onSaveExercise(ex);
+      }
+    } finally {
+      setSeedingPart1(false);
+    }
+  };
+
+  const loadTwoIntegersTemplate = () => {
+    setTitle('Basic Arithmetic Operations on Two Integers');
+    setDescription(
+      'Create a program that reads two integers, a and b, from the user. Your program should compute and display:\n• The sum of a and b\n• The difference when b is subtracted from a\n• The product of a and b\n• The quotient when a is divided by b\n• The remainder when a is divided by b'
+    );
+    setCategory('Java Basics & Operators');
+    setDifficulty('Easy');
+    setPublicInput('10\n3');
+    setPublicOutput('Sum: 13\nDifference: 7\nProduct: 30\nQuotient: 3\nRemainder: 1');
+    setPrivateInput('25\n4');
+    setPrivateOutput('Sum: 29\nDifference: 21\nProduct: 100\nQuotient: 6\nRemainder: 1');
+    setStarterCode(`import java.util.Scanner;
+
+public class Main {
+    public static void main(String[] args) {
+        Scanner sc = new Scanner(System.in);
+        
+        // Read two integers from input
+        int a = sc.nextInt();
+        int b = sc.nextInt();
+        
+        // TODO: Compute and print the sum, difference, product, quotient, and remainder
+        
+        
+        sc.close();
+    }
+}`);
+  };
+
+  const loadArraySumTemplate = () => {
+    setTitle('Sum of Array Elements');
+    setDescription('Write a Java program to read an integer n followed by n integers, and print their total sum.');
+    setCategory('Arrays & Algorithms');
+    setDifficulty('Easy');
+    setPublicInput('5\n10 20 30 40 50');
+    setPublicOutput('150');
+    setPrivateInput('4\n1 2 3 4');
+    setPrivateOutput('10');
+    setStarterCode(`import java.util.Scanner;
+
+public class Main {
+    public static void main(String[] args) {
+        Scanner sc = new Scanner(System.in);
+        int n = sc.nextInt();
+        int sum = 0;
+        for (int i = 0; i < n; i++) {
+            sum += sc.nextInt();
+        }
+        System.out.println(sum);
+        sc.close();
+    }
+}`);
+  };
+
+  const openNewModal = (defaultType?: AssessmentType) => {
+    setEditingEx(null);
+    const targetType: AssessmentType = defaultType || (typeFilter === 'ESE' ? 'ESE' : 'LAB');
+    setAssessmentType(targetType);
+    const now = new Date();
+    const close = new Date(Date.now() + 3600000 * 24 * 30);
+    setOpenTime(now.toISOString().slice(0, 16));
+    setCloseTime(close.toISOString().slice(0, 16));
+    loadTwoIntegersTemplate();
+    setVerifyLog(null);
+    setShowModal(true);
+  };
+
+  const handleEdit = (ex: Exercise) => {
+    setEditingEx(ex);
+    setTitle(ex.title);
+    setDescription(ex.description);
+    setCategory(ex.category || 'Algorithms');
+    setDifficulty(ex.difficulty || 'Easy');
+    setAssessmentType(ex.assessmentType === 'ESE' ? 'ESE' : 'LAB');
+    setOpenTime(ex.openTime);
+    setCloseTime(ex.closeTime);
+    setPublicInput(ex.publicInput);
+    setPublicOutput(ex.publicOutput);
+    setPrivateInput(ex.privateInput);
+    setPrivateOutput(ex.privateOutput);
+    setStarterCode(ex.starterCode || '');
+    setVerifyLog(null);
+    setShowModal(true);
+  };
+
+  const handleVerifySolution = async () => {
+    setVerifying(true);
+    setVerifyLog(null);
+    const pubRes = await JavaRunnerService.execute(starterCode, publicInput, publicOutput);
+    const privRes = await JavaRunnerService.execute(starterCode, privateInput, privateOutput);
+    setVerifyLog({
+      public: pubRes.passed ? 'PASSED (100%)' : `FAILED (${pubRes.log || 'Wrong output'})`,
+      private: privRes.passed ? 'PASSED (100%)' : `FAILED (${privRes.log || 'Wrong output'})`,
+    });
+    setVerifying(false);
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!title || !openTime || !closeTime) return;
+    const prefix = assessmentType === 'ESE' ? 'ESE_' : 'EX_';
+    const exerciseToSave: Exercise = {
+      id: editingEx ? editingEx.id : `${prefix}${Date.now().toString().slice(-5)}`,
+      title,
+      description,
+      category,
+      difficulty,
+      assessmentType,
+      openTime,
+      closeTime,
+      publicInput,
+      publicOutput,
+      privateInput,
+      privateOutput,
+      starterCode,
+    };
+    onSaveExercise(exerciseToSave);
+    setShowModal(false);
+  };
+
+  const getStatusBadge = (openTimeStr: string, closeTimeStr: string) => {
+    const now = Date.now();
+    const open = new Date(openTimeStr).getTime();
+    const close = new Date(closeTimeStr).getTime();
+    if (now < open) {
+      return (
+        <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200">
+          Scheduled
+        </span>
+      );
+    }
+    if (now > close) {
+      return (
+        <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-600 border border-slate-200">
+          Closed
+        </span>
+      );
+    }
+    return (
+      <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center gap-1.5">
+        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+        Active Lab
+      </span>
+    );
+  };
+
+  const labCount = exercises.filter((e) => (e.assessmentType || 'LAB') !== 'ESE').length;
+  const eseCount = exercises.filter((e) => e.assessmentType === 'ESE').length;
+  const displayedExercises = exercises.filter((e) => {
+    if (typeFilter === 'ALL') return true;
+    const t: AssessmentType = e.assessmentType === 'ESE' ? 'ESE' : 'LAB';
+    return t === typeFilter;
+  });
+
+  return (
+    <div className="space-y-6">
+      {/* Top action row */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div>
+          <h2 className="text-xl font-bold text-slate-900 tracking-tight">
+            Question Bank: Lab Exercises &amp; ESE Practicals
+          </h2>
+          <p className="text-xs text-slate-500">
+            Tag questions as <strong>Lab Exercise (LAB)</strong> or <strong>ESE Practical (ESE)</strong>. When ESE Mode is turned ON, students only see ESE questions.
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={handleSeedPart1Experiments}
+            disabled={seedingPart1}
+            className="px-3.5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold flex items-center gap-1.5 shadow-xs transition disabled:opacity-60"
+            title="Seed all 5 Part 1 Lab Experiments mapped to the Account Class"
+          >
+            {seedingPart1 ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+            <span>{seedingPart1 ? 'Seeding Part 1...' : 'Load 5 Part 1 Experiments'}</span>
+          </button>
+          <button
+            onClick={() => openNewModal('LAB')}
+            className="px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold flex items-center gap-1.5 shadow-xs transition"
+          >
+            <Plus className="w-4 h-4" />
+            Add Lab Exercise
+          </button>
+          <button
+            onClick={() => openNewModal('ESE')}
+            className="px-4 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold flex items-center gap-1.5 shadow-xs transition"
+          >
+            <GraduationCap className="w-4 h-4" />
+            Add ESE Question
+          </button>
+        </div>
+      </div>
+
+      {/* Assessment Type Filter Strip */}
+      <div className="flex flex-wrap items-center gap-2 bg-white p-2.5 rounded-xl border border-slate-200 shadow-xs">
+        <button
+          onClick={() => setTypeFilter('ALL')}
+          className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${
+            typeFilter === 'ALL'
+              ? 'bg-slate-900 text-white shadow-2xs'
+              : 'text-slate-600 hover:bg-slate-100'
+          }`}
+        >
+          All Questions ({exercises.length})
+        </button>
+        <button
+          onClick={() => setTypeFilter('LAB')}
+          className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition ${
+            typeFilter === 'LAB'
+              ? 'bg-indigo-600 text-white shadow-2xs'
+              : 'text-slate-600 hover:bg-slate-100'
+          }`}
+        >
+          <FlaskConical className="w-3.5 h-3.5" />
+          Lab Exercises ({labCount})
+        </button>
+        <button
+          onClick={() => setTypeFilter('ESE')}
+          className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition ${
+            typeFilter === 'ESE'
+              ? 'bg-rose-600 text-white shadow-2xs'
+              : 'text-slate-600 hover:bg-slate-100'
+          }`}
+        >
+          <GraduationCap className="w-3.5 h-3.5" />
+          ESE Practical Questions ({eseCount})
+        </button>
+      </div>
+
+      {/* Exercises List */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {displayedExercises.length === 0 ? (
+          <div className="bg-white border border-slate-200 rounded-2xl p-12 text-center col-span-full shadow-xs">
+            <div className="w-12 h-12 rounded-2xl bg-indigo-50 border border-indigo-200 text-indigo-600 flex items-center justify-center mx-auto mb-3">
+              <FileCode className="w-6 h-6" />
+            </div>
+            <h3 className="text-base font-bold text-slate-900 mb-1">
+              {typeFilter === 'ESE'
+                ? 'No ESE Practical Questions Added Yet'
+                : typeFilter === 'LAB'
+                ? 'No Lab Exercises Scheduled Yet'
+                : 'No Questions Scheduled Yet'}
+            </h3>
+            <p className="text-xs text-slate-500 max-w-sm mx-auto mb-4">
+              Click below to schedule a Java question and test cases for {typeFilter === 'ESE' ? 'the End Semester Practical Exam' : 'regular lab evaluation'}.
+            </p>
+            <button
+              onClick={() => openNewModal(typeFilter === 'ESE' ? 'ESE' : 'LAB')}
+              className={`px-4 py-2 rounded-xl text-white text-xs font-semibold inline-flex items-center gap-1.5 transition shadow-xs ${
+                typeFilter === 'ESE' ? 'bg-rose-600 hover:bg-rose-700' : 'bg-indigo-600 hover:bg-indigo-700'
+              }`}
+            >
+              <Plus className="w-4 h-4" />
+              {typeFilter === 'ESE' ? 'Schedule ESE Question' : 'Schedule First Exercise'}
+            </button>
+          </div>
+        ) : (
+          displayedExercises.map((ex) => {
+            const isEse = ex.assessmentType === 'ESE';
+            return (
+            <div
+              key={ex.id}
+              className={`bg-white border rounded-2xl p-5 hover:shadow-md transition flex flex-col justify-between shadow-xs ${
+                isEse ? 'border-rose-200 hover:border-rose-300' : 'border-slate-200 hover:border-slate-300'
+              }`}
+            >
+              <div>
+                <div className="flex items-start justify-between gap-3 mb-2">
+                  <div>
+                    <div className="flex items-center gap-1.5 flex-wrap mb-1">
+                      <span
+                        className={`text-[10px] font-black px-2 py-0.5 rounded uppercase border ${
+                          isEse
+                            ? 'bg-rose-100 text-rose-800 border-rose-300'
+                            : 'bg-indigo-100 text-indigo-800 border-indigo-300'
+                        }`}
+                      >
+                        {isEse ? 'ESE PRACTICAL' : 'LAB'}
+                      </span>
+                      <span className="text-xs font-mono px-2 py-0.5 rounded bg-slate-100 text-slate-600 border border-slate-200">
+                        {ex.id}
+                      </span>
+                      <span className="text-xs font-medium px-2 py-0.5 rounded bg-slate-50 text-slate-700 border border-slate-200">
+                        {ex.category}
+                      </span>
+                      <span
+                        className={`text-[10px] font-bold px-1.5 py-0.5 rounded uppercase ${
+                          ex.difficulty === 'Easy'
+                            ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                            : ex.difficulty === 'Medium'
+                            ? 'bg-amber-50 text-amber-700 border border-amber-200'
+                            : 'bg-rose-50 text-rose-700 border border-rose-200'
+                        }`}
+                      >
+                        {ex.difficulty}
+                      </span>
+                    </div>
+                    <h3 className="text-base font-semibold text-slate-900">{ex.title}</h3>
+                  </div>
+                  <div>{getStatusBadge(ex.openTime, ex.closeTime)}</div>
+                </div>
+                <p className="text-xs text-slate-600 line-clamp-2 mb-4">{ex.description}</p>
+                {/* Time window details */}
+                <div className="grid grid-cols-2 gap-2 text-xs bg-slate-50 p-3 rounded-xl border border-slate-200 mb-4">
+                  <div className="flex items-center gap-2 text-slate-700">
+                    <Calendar className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
+                    <span className="truncate">
+                      Open: {new Date(ex.openTime).toLocaleDateString()} {new Date(ex.openTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2 text-slate-700">
+                    <Clock className="w-3.5 h-3.5 text-rose-600 shrink-0" />
+                    <span className="truncate">
+                      Close: {new Date(ex.closeTime).toLocaleDateString()} {new Date(ex.closeTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </span>
+                  </div>
+                </div>
+                {/* Test Cases preview */}
+                <div className="grid grid-cols-2 gap-2 text-xs mb-4">
+                  <div className="p-2.5 rounded-lg bg-slate-50 border border-slate-200">
+                    <div className="flex items-center gap-1.5 font-semibold text-emerald-700 mb-1">
+                      <Eye className="w-3.5 h-3.5" /> Public Case
+                    </div>
+                    <div className="text-[11px] text-slate-500 font-mono truncate">
+                      In: {ex.publicInput.replace(/\n/g, ' ')}
+                    </div>
+                    <div className="text-[11px] text-slate-800 font-mono truncate">
+                      Exp: {ex.publicOutput.replace(/\n/g, ' ')}
+                    </div>
+                  </div>
+                  <div className="p-2.5 rounded-lg bg-slate-50 border border-slate-200">
+                    <div className="flex items-center gap-1.5 font-semibold text-amber-700 mb-1">
+                      <EyeOff className="w-3.5 h-3.5" /> Hidden Test Case
+                    </div>
+                    <div className="text-[11px] text-slate-500 font-mono truncate">
+                      In: {ex.privateInput.replace(/\n/g, ' ')}
+                    </div>
+                    <div className="text-[11px] text-slate-800 font-mono truncate">
+                      Exp: {ex.privateOutput.replace(/\n/g, ' ')}
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+                <button
+                  onClick={() => handleEdit(ex)}
+                  className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 transition"
+                >
+                  Edit &amp; Test Cases
+                </button>
+              </div>
+            </div>
+            );
+          })
+        )}
+      </div>
+
+      {/* Exercise Modal */}
+      {showModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-xs p-4">
+          <div className="bg-white border border-slate-200 rounded-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto shadow-2xl text-slate-900">
+            <div className="sticky top-0 bg-white/95 backdrop-blur-md px-6 py-4 border-b border-slate-200 flex items-center justify-between z-10">
+              <div className="flex items-center gap-2">
+                <Code2 className="w-5 h-5 text-indigo-600" />
+                <h3 className="text-base font-bold text-slate-900">
+                  {editingEx
+                    ? `Edit Question: ${editingEx.id}`
+                    : assessmentType === 'ESE'
+                    ? 'Schedule New ESE Practical Question'
+                    : 'Schedule New Lab Exercise'}
+                </h3>
+              </div>
+              <button
+                onClick={() => setShowModal(false)}
+                className="text-slate-400 hover:text-slate-700 p-1 rounded-lg hover:bg-slate-100 transition"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <form onSubmit={handleSubmit} className="p-6 space-y-5">
+              {/* Assessment Type Switcher */}
+              <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div>
+                  <span className="text-xs font-bold text-slate-800 block">
+                    Assessment Type (Visibility Control)
+                  </span>
+                  <span className="text-[11px] text-slate-500">
+                    Students see <strong>LAB</strong> during normal sessions and <strong>ESE</strong> only when ESE Mode is enabled.
+                  </span>
+                </div>
+                <div className="flex items-center gap-1.5 bg-white p-1 rounded-xl border border-slate-200 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => setAssessmentType('LAB')}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition ${
+                      assessmentType === 'LAB'
+                        ? 'bg-indigo-600 text-white shadow-2xs'
+                        : 'text-slate-600 hover:bg-slate-100'
+                    }`}
+                  >
+                    <FlaskConical className="w-3.5 h-3.5" />
+                    Lab Exercise
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setAssessmentType('ESE')}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition ${
+                      assessmentType === 'ESE'
+                        ? 'bg-rose-600 text-white shadow-2xs'
+                        : 'text-slate-600 hover:bg-slate-100'
+                    }`}
+                  >
+                    <GraduationCap className="w-3.5 h-3.5" />
+                    ESE Practical
+                  </button>
+                </div>
+              </div>
+
+              <div className="bg-indigo-50/70 border border-indigo-200 rounded-xl p-3 flex flex-wrap items-center justify-between gap-2">
+                <span className="text-xs font-semibold text-indigo-900">
+                  Quick Load Problem Templates:
+                </span>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={loadTwoIntegersTemplate}
+                    className="px-2.5 py-1 text-xs font-semibold rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs transition"
+                  >
+                    Two Integers Arithmetic
+                  </button>
+                  <button
+                    type="button"
+                    onClick={loadArraySumTemplate}
+                    className="px-2.5 py-1 text-xs font-semibold rounded-lg bg-white hover:bg-slate-50 text-indigo-700 border border-indigo-200 shadow-xs transition"
+                  >
+                    Array Sum
+                  </button>
+                </div>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="md:col-span-2 space-y-1">
+                  <label className="text-xs font-semibold text-slate-700">Problem Title</label>
+                  <input
+                    type="text"
+                    required
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
+                    placeholder="e.g. Find Kth Largest Element in Array"
+                    className="w-full bg-white border border-slate-300 rounded-lg px-3.5 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-slate-700">Difficulty</label>
+                  <select
+                    value={difficulty}
+                    onChange={(e) => setDifficulty(e.target.value as any)}
+                    className="w-full bg-white border border-slate-300 rounded-lg px-3.5 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  >
+                    <option value="Easy">Easy</option>
+                    <option value="Medium">Medium</option>
+                    <option value="Hard">Hard</option>
+                  </select>
+                </div>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-slate-700">Category</label>
+                  <input
+                    type="text"
+                    value={category}
+                    onChange={(e) => setCategory(e.target.value)}
+                    placeholder="e.g. Arrays, Strings, OOP"
+                    className="w-full bg-white border border-slate-300 rounded-lg px-3.5 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-slate-700">Open Window (Start)</label>
+                  <input
+                    type="datetime-local"
+                    required
+                    value={openTime}
+                    onChange={(e) => setOpenTime(e.target.value)}
+                    className="w-full bg-white border border-slate-300 rounded-lg px-3.5 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-slate-700">Close Window (End)</label>
+                  <input
+                    type="datetime-local"
+                    required
+                    value={closeTime}
+                    onChange={(e) => setCloseTime(e.target.value)}
+                    className="w-full bg-white border border-slate-300 rounded-lg px-3.5 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  />
+                </div>
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-slate-700">Problem Description & Constraints</label>
+                <textarea
+                  rows={3}
+                  required
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  placeholder="Explain input format, constraints, and required output..."
+                  className="w-full bg-white border border-slate-300 rounded-lg px-3.5 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+              </div>
+              {/* Test Cases grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-slate-50 p-4 rounded-xl border border-slate-200">
+                {/* Public */}
+                <div className="space-y-3">
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-700 uppercase tracking-wide">
+                    <Eye className="w-3.5 h-3.5" /> Public Test Case (Visible to Student)
+                  </div>
+                  <div>
+                    <label className="text-[11px] text-slate-500 block mb-1">Standard Input</label>
+                    <textarea
+                      rows={2}
+                      value={publicInput}
+                      onChange={(e) => setPublicInput(e.target.value)}
+                      className="w-full font-mono text-xs bg-white border border-slate-300 rounded-lg p-2 text-slate-900 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[11px] text-slate-500 block mb-1">Expected Standard Output</label>
+                    <textarea
+                      rows={2}
+                      value={publicOutput}
+                      onChange={(e) => setPublicOutput(e.target.value)}
+                      className="w-full font-mono text-xs bg-white border border-slate-300 rounded-lg p-2 text-slate-900 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                    />
+                  </div>
+                </div>
+                {/* Private */}
+                <div className="space-y-3">
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-amber-700 uppercase tracking-wide">
+                    <EyeOff className="w-3.5 h-3.5" /> Hidden Test Case (For Evaluation Only)
+                  </div>
+                  <div>
+                    <label className="text-[11px] text-slate-500 block mb-1">Hidden Input</label>
+                    <textarea
+                      rows={2}
+                      value={privateInput}
+                      onChange={(e) => setPrivateInput(e.target.value)}
+                      className="w-full font-mono text-xs bg-white border border-slate-300 rounded-lg p-2 text-slate-900 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[11px] text-slate-500 block mb-1">Expected Hidden Output</label>
+                    <textarea
+                      rows={2}
+                      value={privateOutput}
+                      onChange={(e) => setPrivateOutput(e.target.value)}
+                      className="w-full font-mono text-xs bg-white border border-slate-300 rounded-lg p-2 text-slate-900 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                    />
+                  </div>
+                </div>
+              </div>
+              {/* Starter / Reference Code */}
+              <div className="space-y-1">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-semibold text-slate-700">
+                    Starter Code / Reference Java Solution
+                  </label>
+                  <button
+                    type="button"
+                    onClick={handleVerifySolution}
+                    disabled={verifying}
+                    className="text-xs text-indigo-600 hover:text-indigo-800 font-semibold flex items-center gap-1"
+                  >
+                    <Play className="w-3 h-3" />
+                    {verifying ? 'Verifying...' : 'Test Solution on Both Cases'}
+                  </button>
+                </div>
+                <textarea
+                  rows={6}
+                  value={starterCode}
+                  onChange={(e) => setStarterCode(e.target.value)}
+                  className="w-full font-mono text-xs bg-slate-50 border border-slate-300 rounded-lg p-3 text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+              </div>
+              {verifyLog && (
+                <div className="p-3 rounded-lg bg-slate-50 border border-slate-200 text-xs space-y-1">
+                  <div className="text-emerald-700 font-semibold">Public Test: {verifyLog.public}</div>
+                  <div className="text-amber-700 font-semibold">Private Test: {verifyLog.private}</div>
+                </div>
+              )}
+              <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-200">
+                <button
+                  type="button"
+                  onClick={() => setShowModal(false)}
+                  className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2.5 rounded-xl text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs transition"
+                >
+                  Save & Post to Google Sheet
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};

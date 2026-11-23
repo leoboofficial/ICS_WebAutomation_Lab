@@ -1,0 +1,426 @@
+Exercise ID,Title,Description,Open Time,Close Time,Public Input,Public Output,Private Input,Private Output,Starter Code,Category,Difficulty,Assessment Type
+P1_EXP1,Exp 1: Industry Naming Conventions & Refactoring (The Account Class),"Objective:
+Refactor the non-compliant Account class and test driver to strictly follow Google Java Style naming conventions:
+• Replace non-compliant fields/variables (acc_id, bal_amt, ann_rate, w_amt, d_amt) with exact lowerCamelCase names (id, balance, annualInterestRate, withdrawAmount, depositAmount).
+• Rename methods (Get_Monthly_Rate, Get_Monthly_Int, Withdraw_Amt, Deposit_Amt) to lowerCamelCase (getMonthlyInterestRate, getMonthlyInterest, withdraw, deposit).
+• Convert hardcoded values into private static final UPPER_SNAKE_CASE constants.
+
+Account Class Specification:
+• private int id (default 0), private float balance (default 100), private float annualInterestRate (default 0).
+• Constructors: Account() and Account(int id, float balance, float annualInterestRate).
+• Accessor & mutator methods for id, balance, and annualInterestRate.
+• getMonthlyInterestRate() -> (annualInterestRate / 100.0f) / 12.0f
+• getMonthlyInterest() -> balance * getMonthlyInterestRate()
+• withdraw(float amount) and deposit(float amount)
+• Test Program: id = 1122, balance = $20,000, annualInterestRate = 4.5%, withdraw $2,500, deposit $3,000, and print id, balance, monthly interest rate, and monthly interest.
+
+Input Format:
+id (int), balance (float), annualInterestRate (float), withdrawAmount (float), depositAmount (float)
+Output Format:
+Account ID: <id>
+Balance: <2_decimals>
+Monthly Interest Rate: <5_decimals>
+Monthly Interest: <2_decimals>",2026-01-01T00:00,2027-12-31T23:59,1122 20000 4.5 2500 3000,"Account ID: 1122
+Balance: 20500.00
+Monthly Interest Rate: 0.00375
+Monthly Interest: 76.88",1001 10000 6.0 1500 500,"Account ID: 1001
+Balance: 9000.00
+Monthly Interest Rate: 0.00500
+Monthly Interest: 45.00","import java.util.Scanner;
+
+class Account {
+    static final float def_bal = 100.0f;
+    private int acc_id = 0;
+    private float bal_amt = def_bal;
+    private float ann_rate = 0.0f;
+
+    public Account() {
+    }
+
+    public Account(int acc_id, float bal_amt, float ann_rate) {
+        this.acc_id = acc_id;
+        this.bal_amt = bal_amt;
+        this.ann_rate = ann_rate;
+    }
+
+    public int get_id() { return acc_id; }
+    public void set_id(int acc_id) { this.acc_id = acc_id; }
+    public float get_bal() { return bal_amt; }
+    public void set_bal(float bal_amt) { this.bal_amt = bal_amt; }
+    public float get_rate() { return ann_rate; }
+    public void set_rate(float ann_rate) { this.ann_rate = ann_rate; }
+
+    public float Get_Monthly_Rate() {
+        return (ann_rate / 100.0f) / 12.0f;
+    }
+
+    public float Get_Monthly_Int() {
+        return bal_amt * Get_Monthly_Rate();
+    }
+
+    public void Withdraw_Amt(float a) {
+        if (a > 0 && a <= bal_amt) bal_amt -= a;
+    }
+
+    public void Deposit_Amt(float d) {
+        if (d > 0) bal_amt += d;
+    }
+}
+
+public class Main {
+    public static void main(String[] args) {
+        Scanner s = new Scanner(System.in);
+        int i = s.nextInt();
+        float b = s.nextFloat();
+        float r = s.nextFloat();
+        float w_amt = s.nextFloat();
+        float d_amt = s.nextFloat();
+
+        Account acc_obj = new Account(i, b, r);
+        acc_obj.Withdraw_Amt(w_amt);
+        acc_obj.Deposit_Amt(d_amt);
+
+        System.out.println(""Account ID: "" + acc_obj.get_id());
+        System.out.printf(""Balance: %.2f%n"", acc_obj.get_bal());
+        System.out.printf(""Monthly Interest Rate: %.5f%n"", acc_obj.Get_Monthly_Rate());
+        System.out.printf(""Monthly Interest: %.2f%n"", acc_obj.Get_Monthly_Int());
+    }
+}",Part 1: Naming & Formatting,Easy,LAB
+P1_EXP2,"Exp 2: Code Formatting, Indentation & Magic Constant Elimination (The Account Class)","Objective:
+Apply industry formatting rules (4-space indentation, K&R braces, operator spacing, <= 100 char lines) and eliminate magic constants inside the Account class:
+• Convert tabs, Allman `{` braces, and multi-statement lines into clean 4-space K&R formatting.
+• Replace magic literals (`100.0f` default balance, `100.0f` percent divisor, `12.0f` months/year) with `private static final UPPER_SNAKE_CASE` constants.
+
+Account Class Specification:
+• private int id (default 0), private float balance (default 100), private float annualInterestRate (default 0).
+• Constructors: Account() and Account(int id, float balance, float annualInterestRate).
+• Accessor & mutator methods for id, balance, and annualInterestRate.
+• getMonthlyInterestRate() -> (annualInterestRate / 100.0f) / 12.0f
+• getMonthlyInterest() -> balance * getMonthlyInterestRate()
+• withdraw(float amount) and deposit(float amount)
+• Test Program: id = 1122, balance = $20,000, annualInterestRate = 4.5%, withdraw $2,500, deposit $3,000, and print id, balance, monthly interest rate, and monthly interest.
+
+Input Format:
+id (int), balance (float), annualInterestRate (float), withdrawAmount (float), depositAmount (float)
+Output Format:
+Account ID: <id>
+Balance: <2_decimals>
+Monthly Interest Rate: <5_decimals>
+Monthly Interest: <2_decimals>",2026-01-01T00:00,2027-12-31T23:59,1122 20000 4.5 2500 3000,"Account ID: 1122
+Balance: 20500.00
+Monthly Interest Rate: 0.00375
+Monthly Interest: 76.88",1001 10000 6.0 1500 500,"Account ID: 1001
+Balance: 9000.00
+Monthly Interest Rate: 0.00500
+Monthly Interest: 45.00","import java.util.Scanner;
+class Account
+{
+	private int id=0;
+	private float balance=100.0f;
+	private float annualInterestRate=0.0f;
+	public Account(){}
+	public Account(int id,float balance,float annualInterestRate)
+	{
+	this.id=id;this.balance=balance;this.annualInterestRate=annualInterestRate;
+	}
+	public int getId(){return id;}
+	public void setId(int id){this.id=id;}
+	public float getBalance(){return balance;}
+	public void setBalance(float balance){this.balance=balance;}
+	public float getAnnualInterestRate(){return annualInterestRate;}
+	public void setAnnualInterestRate(float annualInterestRate){this.annualInterestRate=annualInterestRate;}
+	public float getMonthlyInterestRate(){return (annualInterestRate/100.0f)/12.0f;}
+	public float getMonthlyInterest(){return balance*getMonthlyInterestRate();}
+	public void withdraw(float amount){if(amount>0&&amount<=balance){balance-=amount;}}
+	public void deposit(float amount){if(amount>0){balance+=amount;}}
+}
+public class Main
+{
+	public static void main(String[] args)
+	{
+	Scanner sc=new Scanner(System.in);
+	int id=sc.nextInt();float bal=sc.nextFloat();float rate=sc.nextFloat();float wAmt=sc.nextFloat();float dAmt=sc.nextFloat();
+	Account account=new Account(id,bal,rate);account.withdraw(wAmt);account.deposit(dAmt);
+	System.out.println(""Account ID: ""+account.getId());System.out.printf(""Balance: %.2f%n"",account.getBalance());System.out.printf(""Monthly Interest Rate: %.5f%n"",account.getMonthlyInterestRate());System.out.printf(""Monthly Interest: %.2f%n"",account.getMonthlyInterest());
+	}
+}",Part 1: Naming & Formatting,Easy,LAB
+P1_EXP3,Exp 3: Javadoc Commenting & Dead Code Cleanup (The Account Class),"Objective:
+Document the Account class and test driver according to Javadoc standards and remove commented-out dead code:
+• Add class-level Javadoc (`/** ... */`) above `Account` and `Main`.
+• Add method-level Javadoc with `@param` and `@return` tags for constructors, getters/setters, `getMonthlyInterestRate()`, `getMonthlyInterest()`, `withdraw()`, and `deposit()`.
+• Remove all obsolete commented-out code blocks.
+
+Account Class Specification:
+• private int id (default 0), private float balance (default 100), private float annualInterestRate (default 0).
+• Constructors: Account() and Account(int id, float balance, float annualInterestRate).
+• Accessor & mutator methods for id, balance, and annualInterestRate.
+• getMonthlyInterestRate() -> (annualInterestRate / 100.0f) / 12.0f
+• getMonthlyInterest() -> balance * getMonthlyInterestRate()
+• withdraw(float amount) and deposit(float amount)
+• Test Program: id = 1122, balance = $20,000, annualInterestRate = 4.5%, withdraw $2,500, deposit $3,000, and print id, balance, monthly interest rate, and monthly interest.
+
+Input Format:
+id (int), balance (float), annualInterestRate (float), withdrawAmount (float), depositAmount (float)
+Output Format:
+Account ID: <id>
+Balance: <2_decimals>
+Monthly Interest Rate: <5_decimals>
+Monthly Interest: <2_decimals>",2026-01-01T00:00,2027-12-31T23:59,1122 20000 4.5 2500 3000,"Account ID: 1122
+Balance: 20500.00
+Monthly Interest Rate: 0.00375
+Monthly Interest: 76.88",1001 10000 6.0 1500 500,"Account ID: 1001
+Balance: 9000.00
+Monthly Interest Rate: 0.00500
+Monthly Interest: 45.00","import java.util.Scanner;
+
+class Account {
+    private static final float PERCENT_DIVISOR = 100.0f;
+    private static final float MONTHS_IN_YEAR = 12.0f;
+    private int id = 0;
+    private float balance = 100.0f;
+    private float annualInterestRate = 0.0f;
+
+    // private float legacyFee = 15.0f;
+
+    public Account() {
+    }
+
+    public Account(int id, float balance, float annualInterestRate) {
+        this.id = id;
+        this.balance = balance;
+        this.annualInterestRate = annualInterestRate;
+    }
+
+    public int getId() {
+        return id;
+    }
+
+    public void setId(int id) {
+        this.id = id;
+    }
+
+    public float getBalance() {
+        return balance;
+    }
+
+    public void setBalance(float balance) {
+        this.balance = balance;
+    }
+
+    public float getAnnualInterestRate() {
+        return annualInterestRate;
+    }
+
+    public void setAnnualInterestRate(float annualInterestRate) {
+        this.annualInterestRate = annualInterestRate;
+    }
+
+    public float getMonthlyInterestRate() {
+        // double oldRate = annualInterestRate / 1200;
+        return (annualInterestRate / PERCENT_DIVISOR) / MONTHS_IN_YEAR;
+    }
+
+    public float getMonthlyInterest() {
+        return balance * getMonthlyInterestRate();
+    }
+
+    public void withdraw(float amount) {
+        if (amount > 0 && amount <= balance) {
+            balance -= amount;
+        }
+    }
+
+    public void deposit(float amount) {
+        if (amount > 0) {
+            balance += amount;
+        }
+    }
+}
+
+public class Main {
+    public static void main(String[] args) {
+        Scanner scanner = new Scanner(System.in);
+        int accountId = scanner.nextInt();
+        float initialBalance = scanner.nextFloat();
+        float annualRate = scanner.nextFloat();
+        float withdrawAmount = scanner.nextFloat();
+        float depositAmount = scanner.nextFloat();
+        // System.out.println(""Debug: creating Account"");
+
+        Account account = new Account(accountId, initialBalance, annualRate);
+        account.withdraw(withdrawAmount);
+        account.deposit(depositAmount);
+
+        System.out.println(""Account ID: "" + account.getId());
+        System.out.printf(""Balance: %.2f%n"", account.getBalance());
+        System.out.printf(""Monthly Interest Rate: %.5f%n"", account.getMonthlyInterestRate());
+        System.out.printf(""Monthly Interest: %.2f%n"", account.getMonthlyInterest());
+        scanner.close();
+    }
+}",Part 1: Javadoc & Commenting,Medium,LAB
+P1_EXP4,Exp 4: Static Code Analysis & Code-Quality Report (The Account Class),"Objective:
+Run Static Code Analysis on the Account implementation, fix every detected HIGH/MEDIUM defect, and prepare a formal Code-Quality Report:
+• Fix unused variables (`tempFee`, `auditStatus`), `String ==` defect (`accountMode == ""STANDARD""`), unclosed `Scanner`, magic numbers (`100.0f`, `12.0f`), and deep conditional nesting in `withdraw()`.
+• Open ""Lint & Static Analysis"" -> click ""Import Detected Issues"" and record each issue and fix applied.
+
+Account Class Specification:
+• private int id (default 0), private float balance (default 100), private float annualInterestRate (default 0).
+• Constructors: Account() and Account(int id, float balance, float annualInterestRate).
+• Accessor & mutator methods for id, balance, and annualInterestRate.
+• getMonthlyInterestRate() -> (annualInterestRate / 100.0f) / 12.0f
+• getMonthlyInterest() -> balance * getMonthlyInterestRate()
+• withdraw(float amount) and deposit(float amount)
+• Test Program: id = 1122, balance = $20,000, annualInterestRate = 4.5%, withdraw $2,500, deposit $3,000, and print id, balance, monthly interest rate, and monthly interest.
+
+Input Format:
+id (int), balance (float), annualInterestRate (float), withdrawAmount (float), depositAmount (float)
+Output Format:
+Account ID: <id>
+Balance: <2_decimals>
+Monthly Interest Rate: <5_decimals>
+Monthly Interest: <2_decimals>",2026-01-01T00:00,2027-12-31T23:59,1122 20000 4.5 2500 3000,"Account ID: 1122
+Balance: 20500.00
+Monthly Interest Rate: 0.00375
+Monthly Interest: 76.88",1001 10000 6.0 1500 500,"Account ID: 1001
+Balance: 9000.00
+Monthly Interest Rate: 0.00500
+Monthly Interest: 45.00","import java.util.Scanner;
+
+class Account {
+    private int id = 0;
+    private float balance = 100.0f;
+    private float annualInterestRate = 0.0f;
+
+    public Account() {
+    }
+
+    public Account(int id, float balance, float annualInterestRate) {
+        this.id = id;
+        this.balance = balance;
+        this.annualInterestRate = annualInterestRate;
+    }
+
+    public int getId() { return id; }
+    public void setId(int id) { this.id = id; }
+    public float getBalance() { return balance; }
+    public void setBalance(float balance) { this.balance = balance; }
+    public float getAnnualInterestRate() { return annualInterestRate; }
+    public void setAnnualInterestRate(float annualInterestRate) { this.annualInterestRate = annualInterestRate; }
+
+    public float getMonthlyInterestRate() {
+        return (annualInterestRate / 100.0f) / 12.0f;
+    }
+
+    public float getMonthlyInterest() {
+        return balance * getMonthlyInterestRate();
+    }
+
+    public void withdraw(float amount) {
+        String accountMode = ""ACTIVE"";
+        if (accountMode == ""ACTIVE"") {
+            if (amount > 0) {
+                if (balance > 0) {
+                    if (amount <= balance) {
+                        balance -= amount;
+                    }
+                }
+            }
+        }
+    }
+
+    public void deposit(float amount) {
+        if (amount > 0) {
+            balance += amount;
+        }
+    }
+}
+
+public class Main {
+    public static void main(String[] args) {
+        Scanner scanner = new Scanner(System.in);
+        int accountId = scanner.nextInt();
+        float initialBalance = scanner.nextFloat();
+        float annualRate = scanner.nextFloat();
+        float withdrawAmount = scanner.nextFloat();
+        float depositAmount = scanner.nextFloat();
+        double tempFee = 25.0;
+        boolean auditFlag = false;
+
+        Account account = new Account(accountId, initialBalance, annualRate);
+        account.withdraw(withdrawAmount);
+        account.deposit(depositAmount);
+
+        System.out.println(""Account ID: "" + account.getId());
+        System.out.printf(""Balance: %.2f%n"", account.getBalance());
+        System.out.printf(""Monthly Interest Rate: %.5f%n"", account.getMonthlyInterestRate());
+        System.out.printf(""Monthly Interest: %.2f%n"", account.getMonthlyInterest());
+    }
+}",Part 1: Static Code Analysis,Medium,LAB
+P1_EXP5,Exp 5: Peer Code Review Exercise & Final Refactoring (The Account Class),"Objective:
+Perform a complete end-to-end refactoring and Peer Code Review exercise on the Account class:
+1. Refactor the entire Account class and test program to pass all Google Java Style checks (naming, 4-space K&R formatting, Javadoc, `static final` constants, zero static analysis defects, >= 90/100 Quality Score).
+2. Complete the 6-item Peer Code Review Checklist in the ""Peer Review Checklist"" tab (Reviewer Name, RegNo, Checklist Statuses, Review Comments, and Resolutions).
+3. Verify the test case (id=1122, balance=20000, annualInterestRate=4.5%, withdraw=2500, deposit=3000) and hidden test case before submission.
+
+Account Class Specification:
+• private int id (default 0), private float balance (default 100), private float annualInterestRate (default 0).
+• Constructors: Account() and Account(int id, float balance, float annualInterestRate).
+• Accessor & mutator methods for id, balance, and annualInterestRate.
+• getMonthlyInterestRate() -> (annualInterestRate / 100.0f) / 12.0f
+• getMonthlyInterest() -> balance * getMonthlyInterestRate()
+• withdraw(float amount) and deposit(float amount)
+• Test Program: id = 1122, balance = $20,000, annualInterestRate = 4.5%, withdraw $2,500, deposit $3,000, and print id, balance, monthly interest rate, and monthly interest.
+
+Input Format:
+id (int), balance (float), annualInterestRate (float), withdrawAmount (float), depositAmount (float)
+Output Format:
+Account ID: <id>
+Balance: <2_decimals>
+Monthly Interest Rate: <5_decimals>
+Monthly Interest: <2_decimals>",2026-01-01T00:00,2027-12-31T23:59,1122 20000 4.5 2500 3000,"Account ID: 1122
+Balance: 20500.00
+Monthly Interest Rate: 0.00375
+Monthly Interest: 76.88",1001 10000 6.0 1500 500,"Account ID: 1001
+Balance: 9000.00
+Monthly Interest Rate: 0.00500
+Monthly Interest: 45.00","import java.util.Scanner;
+class Account
+{
+	private int acc_id = 0;
+	private float bal = 100.0f;
+	private float ann_rate = 0.0f;
+	public Account(){}
+	public Account(int id,float balance,float annualInterestRate)
+	{
+		this.acc_id=id;this.bal=balance;this.ann_rate=annualInterestRate;
+	}
+	public int getId(){return acc_id;}
+	public void setId(int id){this.acc_id=id;}
+	public float getBalance(){return bal;}
+	public void setBalance(float balance){this.bal=balance;}
+	public float getAnnualInterestRate(){return ann_rate;}
+	public void setAnnualInterestRate(float annualInterestRate){this.ann_rate=annualInterestRate;}
+	public float getMonthlyInterestRate(){return (ann_rate/100.0f)/12.0f;}
+	public float getMonthlyInterest(){return bal*getMonthlyInterestRate();}
+	public void withdraw(float a){
+		// float min_bal = 0.0f;
+		if(a>0&&a<=bal){bal-=a;}
+	}
+	public void deposit(float d){if(d>0){bal+=d;}}
+}
+public class Main
+{
+	public static void main(String[] args)
+	{
+		Scanner s=new Scanner(System.in);
+		int id=s.nextInt();float bal=s.nextFloat();float rate=s.nextFloat();float w_amt=s.nextFloat();float d_amt=s.nextFloat();
+		int unused_check=99;
+		String tier=""ACTIVE"";
+		Account acc=new Account(id,bal,rate);
+		if(tier==""ACTIVE""){acc.withdraw(w_amt);acc.deposit(d_amt);}
+		System.out.println(""Account ID: ""+acc.getId());
+		System.out.printf(""Balance: %.2f%n"",acc.getBalance());
+		System.out.printf(""Monthly Interest Rate: %.5f%n"",acc.getMonthlyInterestRate());
+		System.out.printf(""Monthly Interest: %.2f%n"",acc.getMonthlyInterest());
+	}
+}",Part 1: Peer Code Review,Hard,LAB
