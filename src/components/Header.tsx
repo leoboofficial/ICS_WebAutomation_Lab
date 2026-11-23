@@ -9,7 +9,6 @@ import {
   Eye,
   BookOpen,
   LogOut,
-  UserCog,
 } from 'lucide-react';
 
 interface HeaderProps {
@@ -78,12 +77,8 @@ export const Header: React.FC<HeaderProps> = ({
                 )}
               </div>
             ) : currentTab === 'coordinator' ? (
-              /* Coordinator Portal - Shows Coordinator Badge and Faculty Portal quick switch when authenticated */
+              /* Coordinator Portal - Shows Faculty Portal quick switch when authenticated */
               <div className="flex items-center gap-2">
-                <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-violet-50 border border-violet-200 text-xs font-bold text-violet-700 shadow-xs">
-                  <UserCog className="w-4 h-4 text-violet-600" />
-                  <span>Course Coordinator Portal</span>
-                </div>
                 {isVerified && (
                   <button
                     onClick={() => onSelectTab('faculty')}
@@ -96,12 +91,8 @@ export const Header: React.FC<HeaderProps> = ({
                 )}
               </div>
             ) : (
-              /* Faculty Portal - Shows Faculty Badge and Student Link share */
+              /* Faculty Portal - Shows Preview Student IDE and Student Link share */
               <div className="flex items-center gap-2">
-                <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-indigo-50 border border-indigo-200 text-xs font-bold text-indigo-700 shadow-xs">
-                  <GraduationCap className="w-4 h-4 text-indigo-600" />
-                  <span>Faculty Management Portal</span>
-                </div>
                 {isVerified && (
                   <>
                     <button
