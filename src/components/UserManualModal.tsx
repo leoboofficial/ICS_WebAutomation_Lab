@@ -159,9 +159,8 @@ export const UserManualModal: React.FC<UserManualModalProps> = ({
                 </h2>
                 <ul className="text-xs list-disc list-inside space-y-1.5 text-slate-700">
                   <li><strong>Coordinator Sign-In:</strong> Open <code className="font-mono font-bold">/#/coordinator</code> and sign in using the Coordinator credentials configured in the <code className="font-mono">CoordinatorAuth</code> tab of the connected Google Sheet.</li>
-                  <li><strong>First-Time Login Security:</strong> On initial login, you are prompted to change the default password (stored as a SHA-256 hash) and register an <strong>Official Email ID</strong> for recovery.</li>
                   <li><strong>Forgot Password (Email OTP):</strong> Click <strong>Forgot Password?</strong> on the sign-in screen, enter your registered Official Email ID, retrieve the 6-digit OTP sent via Google Apps Script (<code className="font-mono">MailApp.sendEmail</code>, valid for 10 minutes), verify the OTP, and set a new password.</li>
-                  <li><strong>Update Password Anytime:</strong> Inside the dashboard header/security card, you can update your password or Official Email ID whenever needed.</li>
+                  <li><strong>Update Password Anytime:</strong> Click <strong>Change Password</strong> in the dashboard header whenever you want to update your password or register an Official Email ID.</li>
                 </ul>
               </section>
 
